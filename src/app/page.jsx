@@ -1,4 +1,5 @@
 "use client";
+import CategoriesSection from "@/components/Home/CategoriesSection";
 import Hero from "@/components/Home/Hero";
 
 const Home = () => {
@@ -11,6 +12,7 @@ const Home = () => {
   return (
     <div>
       <Hero slides={slides} />
+      <CategoriesSection />
     </div>
   );
 };
