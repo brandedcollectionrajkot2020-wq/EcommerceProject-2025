@@ -1,6 +1,8 @@
 "use client";
 import CategoriesSection from "@/components/Home/CategoriesSection";
+import FeaturedProducts from "@/components/Home/FeaturedProducts";
 import Hero from "@/components/Home/Hero";
+import ProductCard from "@/components/Layouts/ProductCard";
 
 const Home = () => {
   const slides = [
@@ -13,6 +15,7 @@ const Home = () => {
     <div>
       <Hero slides={slides} />
       <CategoriesSection />
+      <FeaturedProducts />
     </div>
   );
 };

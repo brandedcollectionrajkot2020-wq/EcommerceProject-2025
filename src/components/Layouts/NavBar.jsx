@@ -177,9 +177,10 @@ const NavBar = () => {
           </Link>
 
           <ul className="hidden md:flex space-x-10 text-[15px] font-semibold uppercase text-[#654321']">
-            {navLinks.map((link) =>
+            {navLinks.map((link, idx) =>
               link.mega ? (
                 <li
+                  key={idx}
                   className="relative"
                   onMouseEnter={() => setIsProductsMegaOpen(true)}
                   onMouseLeave={() => setIsProductsMegaOpen(false)}
