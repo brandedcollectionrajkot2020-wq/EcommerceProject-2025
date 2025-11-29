@@ -25,39 +25,30 @@ const PALETTE = {
   LOGO_TEXT: "font-serif text-[#654321] tracking-wide",
 };
 
-// --- Data Structure Mimicking TSS Sidebar Content ---
+// --- Data Structure (SIMPLIFIED FOR MEN'S ONLY) ---
 const navLinks = [
-  { name: "Men", href: "/men", mega: true },
-  { name: "Women", href: "/women", mega: true },
-  { name: "Sneakers", href: "/sneakers" },
-  { name: "New Arrivals", href: "/new-arrivals" },
-  { name: "Best Sellers", href: "/best-sellers" },
-  { name: "Official Merch", href: "/official-merch", accordion: true },
-  { name: "More", href: "/more", accordion: true },
+  { name: "Men", href: "/men", mega: true }, // Retained: Men's Menu
+  { name: "New Arrivals", href: "/new-arrivals" }, // Retained
+  { name: "Best Sellers", href: "/best-sellers" }, // Retained
+  { name: "About Us", href: "/about-us" }, // Retained
+  { name: "Contact Us", href: "/contact-us" }, // Retained
 ];
 
-const sidebarUtilityLinks = [
-  { name: "MY MEMBERSHIP", href: "/membership" },
-  { name: "Stores Near Me", href: "/stores" },
-  { name: "Track My Order", href: "/track-order" },
-];
+// Utility links are now empty as the necessary links are in navLinks
+const sidebarUtilityLinks = [];
 
+// Image categories for the mega menu (Adjusted for Men's focus)
 const imageCategories = [
-  { title: "BF Sale", img: "/assets/bf-sale.jpg", link: "/sale" },
-  { title: "All Topwear", img: "/assets/all-topwear.jpg", link: "/topwear" },
-  { title: "All Bottoms", img: "/assets/all-bottoms.jpg", link: "/bottoms" },
-  { title: "Member Vault", img: "/assets/member-vault.jpg", link: "/vault" },
-  {
-    title: "Stocking Out",
-    img: "/assets/stocking-out.jpg",
-    link: "/stocking-out",
-  },
+  { title: "SALE", img: "/assets/bf-sale.jpg", link: "/sale" },
+  { title: "T-Shirts", img: "/assets/all-topwear.jpg", link: "/topwear" },
+  { title: "Bottomwear", img: "/assets/all-bottoms.jpg", link: "/bottoms" },
+  { title: "Sneakers", img: "/assets/member-vault.jpg", link: "/sneakers" },
 ];
 
 const sidebarMegaData = {
   Men: [
     {
-      title: "T-Shirts",
+      title: "Topwear",
       subs: ["All T-Shirts", "Oversized T-Shirts", "Sajana", "Shirts"],
     },
     {
@@ -68,9 +59,11 @@ const sidebarMegaData = {
       title: "Accessories",
       subs: ["Backpacks", "Perfumes", "Socks", "Caps", "Shoe Laces"],
     },
-  ],
-  Women: [
-    /* Add Women's data here */
+    // Adding a general link group as placeholder for other main sections
+    {
+      title: "General",
+      subs: ["New Arrivals", "Best Sellers"],
+    },
   ],
 };
 
@@ -88,8 +81,9 @@ const NavBar = () => {
 
   // State for the main sidebar (hamburger menu) open/close
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  // State for which sidebar accordion section is open
-  const [openAccordion, setOpenAccordion] = useState(null);
+
+  // *** CHANGE: Set 'Men' as the initial open mega menu ***
+  const [openMegaMenu, setOpenMegaMenu] = useState("Men");
 
   // Toggle the main sidebar and control body scrolling
   const toggleSidebar = () => {
@@ -98,31 +92,32 @@ const NavBar = () => {
     document.body.style.overflow = newState ? "hidden" : "auto";
   };
 
-  // Toggle the accordion section (e.g., Men/Women/More)
-  const toggleAccordion = (menuName) => {
-    setOpenAccordion(openAccordion === menuName ? null : menuName);
+  // Toggle the mega menu section (Men)
+  const toggleMegaMenu = (menuName) => {
+    // If the menu is already open, close it (set to null), otherwise open it
+    setOpenMegaMenu(openMegaMenu === menuName ? null : menuName);
   };
 
   // Close everything when a link is clicked
   const handleLinkClick = () => {
     setIsSidebarOpen(false);
-    setOpenAccordion(null);
+    // Closing it here is standard UX for mobile navigation:
+    // setOpenMegaMenu(null);
     document.body.style.overflow = "auto";
   };
 
-  // --- Component for rendering Sidebar Links/Accordions ---
+  // --- Component for rendering Sidebar Links/Mega Menu ---
   const SidebarContent = ({ link }) => {
     const isMega = link.mega;
-    const isAccordion = link.accordion;
-    const isCurrentlyOpen = openAccordion === link.name;
+    const isCurrentlyOpen = openMegaMenu === link.name;
     const data = sidebarMegaData[link.name];
 
-    if (isMega || isAccordion) {
+    if (isMega) {
       return (
         <div key={link.name} className={`border-b ${PALETTE.BORDER_ACCENT}`}>
           <button
             className={`w-full text-left py-4 px-4 font-bold flex justify-between items-center text-lg ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT}`}
-            onClick={() => toggleAccordion(link.name)}
+            onClick={() => toggleMegaMenu(link.name)}
           >
             {link.name}
             <span className="text-xl text-gray-700">
@@ -134,25 +129,25 @@ const NavBar = () => {
             </span>
           </button>
 
+          {/* *** CHANGE APPLIED HERE: Added 'overflow-y-auto' to enable scrolling within the mega menu content. *** */}
           <div
-            // Tailwind trick to simulate height transition on unknown height content
             className={`transition-all duration-300 ease-in-out overflow-hidden ${
               isCurrentlyOpen
-                ? "max-h-[1000px] opacity-100"
+                ? "max-h-[calc(100vh-160px)] opacity-100 overflow-y-auto" // Use calc(100vh - header_height) for better max-height definition
                 : "max-h-0 opacity-0"
             }`}
           >
-            {/* The core 'Men'/'Women' sidebar content from the screenshot */}
+            {/* The core 'Men' sidebar content */}
             {isMega && data && (
               <div className="p-4 space-y-4">
-                {/* Top Row: Sale/Topwear/Bottoms (Image Grid) */}
+                {/* Top Row: Featured Collections (Image Grid) */}
                 <h3
                   className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} mb-2`}
                 >
                   FEATURED COLLECTIONS
                 </h3>
                 <div className="grid grid-cols-4 gap-2">
-                  {imageCategories.slice(0, 4).map((item, i) => (
+                  {imageCategories.map((item, i) => (
                     <Link
                       href={item.link}
                       key={i}
@@ -173,11 +168,11 @@ const NavBar = () => {
                   ))}
                 </div>
 
-                {/* Categories Section */}
+                {/* Categories Section (Simplified Grid) */}
                 <h3
                   className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} pt-4 mb-2`}
                 >
-                  Categories
+                  Top Categories
                 </h3>
                 <div className="grid grid-cols-4 gap-2">
                   {data
@@ -206,7 +201,7 @@ const NavBar = () => {
                     ))}
                 </div>
 
-                {/* Simplified for other non-image categories */}
+                {/* Detailed Category Links */}
                 {data.map((cat, i) => (
                   <div key={i} className="pt-2">
                     <h4
@@ -233,20 +228,6 @@ const NavBar = () => {
                 ))}
               </div>
             )}
-
-            {/* Placeholder for 'Official Merch' and 'More' content */}
-            {isAccordion && !isMega && (
-              <div className="p-4 text-sm text-gray-700 space-y-2">
-                <p>Additional content for {link.name} goes here.</p>
-                <Link
-                  href="#"
-                  className={`block ${PALETTE.HOVER_ACCENT}`}
-                  onClick={handleLinkClick}
-                >
-                  Example Sub-Link
-                </Link>
-              </div>
-            )}
           </div>
         </div>
       );
@@ -266,7 +247,6 @@ const NavBar = () => {
   };
 
   return (
-    // FIX APPLIED HERE: Added sticky top-0 and w-full
     <header
       className={`sticky top-0 w-full z-50 ${PALETTE.BG_LIGHT} shadow-md`}
     >
@@ -274,7 +254,7 @@ const NavBar = () => {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* LEFT SIDE: HAMBURGER & MAIN CATEGORIES */}
         <div className="flex items-center space-x-6">
-          {/* 1. HAMBURGER BUTTON (Visible on all screens) */}
+          {/* 1. HAMBURGER BUTTON */}
           <button
             className={`${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT}`}
             onClick={toggleSidebar}
@@ -287,13 +267,12 @@ const NavBar = () => {
             )}
           </button>
 
-          {/* 2. MAIN CATEGORY LINKS (Desktop only) */}
+          {/* 2. MAIN CATEGORY LINKS (Desktop only - Regular links only) */}
           <ul
             className={`hidden lg:flex space-x-6 text-sm font-semibold uppercase ${PALETTE.TEXT_PRIMARY} h-full`}
           >
             {navLinks
-              .filter((link) => !link.mega && !link.accordion)
-              .slice(0, 3)
+              .filter((link) => !link.mega)
               .map((link) => (
                 <li key={link.name} className="relative group">
                   <Link
@@ -325,8 +304,6 @@ const NavBar = () => {
 
         {/* CENTER: LOGO */}
         <Link href="/" className="absolute left-1/2 transform -translate-x-1/2">
-          {/* NOTE: If you only want the logo image, this is fine. 
-             If you want the text/image combo like before, adjust this block: */}
           <Image
             src={"/assets/logo.png"}
             alt="Brand Logo"
@@ -342,7 +319,7 @@ const NavBar = () => {
             <div className="relative">
               <input
                 type="text"
-                placeholder="What are you looking for?"
+                placeholder="Search Men's..."
                 className={`w-48 lg:w-64 xl:w-80 h-10 border ${PALETTE.BORDER_ACCENT} rounded-full pl-4 pr-10 text-sm focus:ring-[#DEB887] focus:border-[#DEB887] ${PALETTE.BG_LIGHT}`}
               />
               <button
@@ -354,10 +331,11 @@ const NavBar = () => {
             </div>
           </div>
 
-          {/* Icons */}
+          {/* Icons (User link changed to login as requested) */}
           <Link
-            href="/profile"
+            href="/login"
             className={`hidden sm:block ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT} transition-colors`}
+            aria-label="Login/Profile"
           >
             <FiUser className="w-6 h-6" />
           </Link>
@@ -391,7 +369,7 @@ const NavBar = () => {
 
       {/* --- SLIDING SIDEBAR DRAWER --- */}
 
-      {/* 1. Overlay (Darkens the content and closes the sidebar on click) */}
+      {/* 1. Overlay */}
       <div
         className={`fixed inset-0 ${PALETTE.OVERLAY} transition-opacity z-40 ${
           isSidebarOpen ? "opacity-40" : "opacity-0 pointer-events-none"
@@ -407,7 +385,7 @@ const NavBar = () => {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Top Header Section (Log in/Register & App Offer) */}
+        {/* Top Header Section (Log in/Register) */}
         <div className={`${PALETTE.ACCENT_BG} text-white p-4`}>
           <Link
             href="/login"
@@ -418,29 +396,15 @@ const NavBar = () => {
             <FiLogIn className="w-5 h-5" />
           </Link>
           <p className="text-sm font-medium text-center">
-            Earn 10% Cashback on Every App Order
-            <span className="ml-1 text-yellow-300">💰</span>
+            Shop the exclusive Men's Collection
+            <span className="ml-1 text-yellow-300">🔥</span>
           </p>
         </div>
 
-        {/* Main Navigation Links */}
+        {/* Main Navigation Links (Men's Mega Menu + Regular Links) */}
         <div className="py-2">
           {navLinks.map((link) => (
             <SidebarContent key={link.name} link={link} />
-          ))}
-        </div>
-
-        {/* Utility Links Section (My Membership, Stores, Track Order) */}
-        <div className={`pt-4 border-t ${PALETTE.BORDER_ACCENT}`}>
-          {sidebarUtilityLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className={`block py-3 px-4 text-sm font-semibold ${PALETTE.TEXT_PRIMARY} ${PALETTE.ACCENT_HOVER_BG} transition`}
-              onClick={handleLinkClick}
-            >
-              {link.name}
-            </Link>
           ))}
         </div>
       </div>
