@@ -2,52 +2,54 @@ import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/dbConnect";
 import Products from "@/models/Products";
 import User from "@/models/User";
-import { requireAuthUser } from "@/lib/auth";
+import { cookies } from "next/headers";
+import { jwtDecode } from "jwt-decode";
 
 /**
  * GET /api/wishlist
- * Returns populated wishlist (full product data)
  */
-export async function GET(request) {
-  const { user, errorResponse } = await requireAuthUser(request);
-  if (!user) return errorResponse;
+export async function GET() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth")?.value;
+  if (!token)
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  const decoded = jwtDecode(token);
 
   await connectDb();
 
-  const populatedUser = await User.findById(user._id).populate("wishlist");
+  const user = await User.findById(decoded.userId).populate("wishlist");
+
   return NextResponse.json({
     status: "success",
-    wishlist: populatedUser.wishlist,
+    wishlist: user.wishlist,
   });
 }
 
 /**
  * POST /api/wishlist
- * Body: { productId }
  */
 export async function POST(request) {
-  const { user, errorResponse } = await requireAuthUser(request);
-  if (!user) return errorResponse;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth")?.value;
+  if (!token)
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  const decoded = jwtDecode(token);
 
   await connectDb();
 
-  const body = await request.json();
-  const { productId } = body;
+  const user = await User.findById(decoded.userId);
 
-  if (!productId) {
+  const { productId } = await request.json();
+  if (!productId)
     return NextResponse.json(
       { message: "productId is required" },
       { status: 400 }
     );
-  }
 
-  const productExists = await Products.findById(productId);
-  if (!productExists) {
-    return NextResponse.json({ message: "Product not found" }, { status: 404 });
-  }
-
-  // Avoid duplicates
-  if (!user.wishlist.some((id) => id.toString() === productId)) {
+  const exists = user.wishlist.some((id) => id.toString() === productId);
+  if (!exists) {
     user.wishlist.push(productId);
     await user.save();
   }
@@ -56,25 +58,30 @@ export async function POST(request) {
 }
 
 /**
- * DELETE /api/wishlist?productId=...
+ * DELETE /api/wishlist
  */
 export async function DELETE(request) {
-  const { user, errorResponse } = await requireAuthUser(request);
-  if (!user) return errorResponse;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth")?.value;
+  if (!token)
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  const decoded = jwtDecode(token);
+
+  await connectDb();
+
+  const user = await User.findById(decoded.userId);
 
   const { searchParams } = new URL(request.url);
   const productId = searchParams.get("productId");
 
-  if (!productId) {
+  if (!productId)
     return NextResponse.json(
       { message: "productId is required" },
       { status: 400 }
     );
-  }
 
-  user.wishlist = user.wishlist.filter(
-    (id) => id.toString() !== productId.toString()
-  );
+  user.wishlist = user.wishlist.filter((id) => id.toString() !== productId);
   await user.save();
 
   return NextResponse.json({ status: "success" });

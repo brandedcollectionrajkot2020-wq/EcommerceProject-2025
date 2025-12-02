@@ -22,6 +22,7 @@ export default function GoogleLoginButton({ onSuccess, onError, className }) {
       const res = await fetch("/api/user/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(userData),
       });
 

@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { HeartIcon } from "@heroicons/react/24/outline";
 import { useAppStore } from "../../store/useAppStore";
+import { ShoppingCart } from "lucide-react";
+import { redirect } from "next/navigation";
 
 const ProductCard = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -18,7 +20,9 @@ const ProductCard = ({ product }) => {
   };
 
   const currentProduct = product || defaultProduct;
-  const isWishlisted = useAppStore((s) => s.isInWishlist(currentProduct._id));
+  const wishlist = useAppStore((s) => s.wishlist);
+  const isWishlisted = wishlist.some((item) => item._id === currentProduct._id);
+
   const { addToWishlist, removeFromWishlist, isInWishlist, addToCart } =
     useAppStore();
   // --- FIX: Works in Dev + Production + GridFS ---
@@ -39,6 +43,7 @@ const ProductCard = ({ product }) => {
   return (
     <div className="relative group w-full max-w-sm bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
       <div
+        onClick={() => redirect(`/products/${currentProduct._id}`)}
         className="relative w-full h-96 overflow-hidden cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -60,7 +65,6 @@ const ProductCard = ({ product }) => {
           }`}
         />
 
-        {/* BACK IMAGE */}
         {frontLoaded && BACK_URL && (
           <Image
             src={BACK_URL}
@@ -80,16 +84,16 @@ const ProductCard = ({ product }) => {
             <button
               className="absolute top-4 right-4 z-10 bg-white p-2 rounded-full shadow-md hover:scale-110 transition"
               onClick={() =>
-                isInWishlist(currentProduct._id)
+                isWishlisted
                   ? removeFromWishlist(currentProduct._id)
                   : addToWishlist(currentProduct)
               }
             >
               <HeartIcon
-                className={`h-5 w-5 ${
-                  isInWishlist(currentProduct._id)
-                    ? "text-red-500"
-                    : "text-gray-700"
+                className={`h-5 w-5 transition-all ${
+                  isWishlisted
+                    ? "fill-gray-700 scale-110"
+                    : "text-gray-700 scale-100"
                 }`}
               />
             </button>
@@ -134,10 +138,10 @@ const ProductCard = ({ product }) => {
             </span>
           )}
           <button
-            className="mt-3 w-full bg-[#654321] text-white py-2 rounded hover:bg-[#8b5a2b] transition"
+            className="mt-1 ml-2 px-2 bg-[#654321] text-white py-2 rounded hover:bg-[#8b5a2b] transition"
             onClick={() => addToCart(currentProduct)}
           >
-            Add to Cart
+            <ShoppingCart />
           </button>
         </div>
       </div>

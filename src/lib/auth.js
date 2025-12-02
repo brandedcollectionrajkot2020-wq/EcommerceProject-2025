@@ -1,44 +1,36 @@
-import jwt from "jsonwebtoken";
-import { NextResponse } from "next/server";
-import { connectDb } from "./dbConnect";
-import User from "@/models/User";
+import { getCookie } from "cookies-next";
+import { cookies } from "next/headers";
+import { States } from "./states";
 
-export async function getAuthUser(request) {
-  // 1. Try cookie
-  const cookieToken = request.cookies.get("token")?.value;
-
-  // 2. Or Authorization: Bearer xxx
-  const authHeader = request.headers.get("authorization");
-  const headerToken = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : null;
-
-  const token = cookieToken || headerToken;
+export function getAuthServer() {
+  const token = getCookie("auth", { cookies });
+  console.log(token);
 
   if (!token) return null;
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    await connectDb();
-    const user = await User.findById(payload.userId);
-    return user || null;
-  } catch (err) {
-    console.error("getAuthUser error:", err.message);
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
     return null;
   }
 }
+export const isLoggedIn = () => {
+  return Boolean(getCookie("auth"));
+};
 
-// Optionally, small helper to enforce auth in routes
-export async function requireAuthUser(request) {
-  const user = await getAuthUser(request);
-  if (!user) {
-    return {
-      user: null,
-      errorResponse: NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      ),
-    };
+export async function isAuth() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth")?.value;
+
+  if (!token) {
+    return redirect("/auth");
   }
-  return { user, errorResponse: null };
+
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    States().setAuth(true);
+  } catch (err) {
+    return redirect("/auth");
+  }
+  return { auth };
 }

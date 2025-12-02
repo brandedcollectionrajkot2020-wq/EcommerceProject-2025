@@ -13,13 +13,18 @@ export const useAppStore = create((set, get) => ({
   fetchWishlist: async () => {
     try {
       set({ loadingWishlist: true });
-      const res = await fetch("/api/wishlist", { credentials: "include" });
-      if (!res.ok) return;
+
+      const res = await fetch("/api/wishlist", {
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Failed");
+
       const data = await res.json();
       set({ wishlist: data.wishlist || [] });
-    } catch (e) {
+    } catch (err) {
       toast.error("Failed to load wishlist");
-      console.error("fetchWishlist error:", e);
+      console.error(err);
     } finally {
       set({ loadingWishlist: false });
     }
@@ -28,42 +33,45 @@ export const useAppStore = create((set, get) => ({
   addToWishlist: async (product) => {
     try {
       const exists = get().wishlist.some((p) => p._id === product._id);
-      if (exists) {
-        toast("⚠ Already in wishlist");
-        return;
-      }
+      if (exists) return toast("⚠ Already in wishlist");
 
       // Optimistic UI
       set({ wishlist: [...get().wishlist, product] });
-      toast.success("❤️ Added to wishlist");
 
-      await fetch("/api/wishlist", {
+      const res = await fetch("/api/wishlist", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId: product._id }),
       });
+
+      if (!res.ok) throw new Error();
+
+      await get().fetchWishlist(); // 🔥 sync with backend
+      toast.success("❤️ Added to wishlist");
     } catch (e) {
-      toast.error("Wishlist save failed");
-      console.error("addToWishlist error:", e);
+      toast.error("Failed updating wishlist");
+      console.error(e);
+      await get().fetchWishlist();
     }
   },
 
   removeFromWishlist: async (productId) => {
     try {
-      set({
-        wishlist: get().wishlist.filter((p) => p._id !== productId),
-      });
+      set({ wishlist: get().wishlist.filter((p) => p._id !== productId) });
 
-      toast("💔 Removed from wishlist");
-
-      await fetch(`/api/wishlist?productId=${productId}`, {
+      const res = await fetch(`/api/wishlist?productId=${productId}`, {
         method: "DELETE",
         credentials: "include",
       });
+
+      if (!res.ok) throw new Error();
+
+      await get().fetchWishlist(); // 🔥 sync
+      toast("💔 Removed");
     } catch (e) {
-      toast.error("Failed to remove wishlist item");
-      console.error("removeFromWishlist error:", e);
+      toast.error("Failed");
+      await get().fetchWishlist();
     }
   },
 
@@ -73,19 +81,24 @@ export const useAppStore = create((set, get) => ({
   fetchCart: async () => {
     try {
       set({ loadingCart: true });
-      const res = await fetch("/api/cart", { credentials: "include" });
-      if (!res.ok) return;
+
+      const res = await fetch("/api/cart", {
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Unauthorized");
+
       const data = await res.json();
 
-      const cartItems = (data.cart || []).map((item) => ({
+      const normalized = data.cart.map((item) => ({
         ...item.product,
         qty: item.qty,
       }));
 
-      set({ cart: cartItems });
-    } catch (e) {
+      set({ cart: normalized });
+    } catch (err) {
       toast.error("Failed to load cart");
-      console.error("fetchCart error:", e);
+      console.error(err);
     } finally {
       set({ loadingCart: false });
     }
@@ -93,78 +106,95 @@ export const useAppStore = create((set, get) => ({
 
   addToCart: async (product) => {
     try {
-      const existing = get().cart.find((p) => p._id === product._id);
+      const existing = get().cart.find(
+        (p) => p._id === product._id || product.id
+      );
+
       if (existing) {
         set({
           cart: get().cart.map((p) =>
             p._id === product._id ? { ...p, qty: p.qty + 1 } : p
           ),
         });
-
-        toast("⬆ Quantity updated");
       } else {
         set({ cart: [...get().cart, { ...product, qty: 1 }] });
-        toast.success("🛍 Added to cart");
       }
 
-      await fetch("/api/cart", {
+      const res = await fetch("/api/cart", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ productId: product._id, qty: 1 }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product._id }),
       });
-    } catch (e) {
-      toast.error("Failed to update cart");
-      console.error("addToCart error:", e);
+
+      if (!res.ok) throw new Error();
+
+      await get().fetchCart(); // 🔥 sync
+      toast.success("🛍 Updated Cart");
+    } catch {
+      await get().fetchCart();
     }
   },
 
   updateQty: async (productId, qty) => {
     try {
-      if (qty < 1) {
-        set({
-          cart: get().cart.filter((p) => p._id !== productId),
-        });
-        toast("🗑 Removed from cart");
-      } else {
-        set({
-          cart: get().cart.map((p) =>
-            p._id === productId ? { ...p, qty } : p
-          ),
-        });
-        toast("⬆ Updated quantity");
-      }
+      const newCart =
+        qty < 1
+          ? get().cart.filter((p) => p._id !== productId)
+          : get().cart.map((p) => (p._id === productId ? { ...p, qty } : p));
 
-      await fetch("/api/cart", {
+      set({ cart: newCart });
+
+      const res = await fetch("/api/cart", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId, qty }),
       });
-    } catch (e) {
-      toast.error("Qty update failed");
-      console.error("updateQty error:", e);
+
+      if (!res.ok) throw new Error();
+
+      await get().fetchCart(); // 🔥 sync
+    } catch {
+      await get().fetchCart();
     }
   },
 
   removeFromCart: async (productId) => {
     try {
-      set({
-        cart: get().cart.filter((p) => p._id !== productId),
-      });
-
-      toast("🗑 Removed from cart");
+      set({ cart: get().cart.filter((p) => p._id !== productId) });
 
       await fetch(`/api/cart?productId=${productId}`, {
         method: "DELETE",
         credentials: "include",
       });
-    } catch (e) {
-      toast.error("Failed to remove from cart");
-      console.error("removeFromCart error:", e);
+
+      await get().fetchCart(); // 🔥 sync
+    } catch {
+      await get().fetchCart();
     }
   },
 
-  cartCount: () =>
-    get().cart.reduce((total, item) => total + (item.qty || 0), 0),
+  removeFromCart: async (productId) => {
+    try {
+      const old = get().cart;
+      set({ cart: old.filter((p) => p._id !== productId) });
+
+      const res = await fetch(`/api/cart?productId=${productId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Failed");
+
+      toast("🗑 Removed from cart");
+    } catch (e) {
+      toast.error("Failed removing item");
+      console.error(e);
+
+      await get().fetchCart();
+    }
+  },
+
+  cartCount: () => get().cart.reduce((t, item) => t + (item.qty || 0), 0),
 }));

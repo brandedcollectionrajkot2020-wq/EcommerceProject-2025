@@ -1,3 +1,4 @@
+"use client";
 import React, { useRef } from "react";
 import ProductCard from "../Layouts/ProductCard";
 import { Swiper, SwiperSlide } from "swiper/react";
