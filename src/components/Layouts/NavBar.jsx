@@ -2,7 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CgClose, CgMenu } from "react-icons/cg";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import {
@@ -15,7 +15,10 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import WishlistModal from "./WishlistModal";
 import CartModal from "./CartModal";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, User } from "lucide-react";
+import { useUserStore } from "@/store/useUserStore";
+// import { jwtDecode } from "jwt-decode";
+// import { cookies } from "next/headers";
 
 // --- Color Palette ---
 const PALETTE = {
@@ -95,6 +98,13 @@ const NavBar = () => {
   //   wishlist: s.wishlist,
   //   cartCount: s.cartCount(),
   // }));
+  const { user, loading, getUser } = useUserStore();
+
+  useEffect(() => {
+    getUser();
+  }, []);
+  console.log(user);
+
   const wishlistCount = useAppStore((s) => s.wishlist.length);
   const cartCount = useAppStore((s) => s.cartCount());
   // Toggle the main sidebar and control body scrolling
@@ -398,14 +408,21 @@ const NavBar = () => {
       >
         {/* Top Header Section (Log in/Register) */}
         <div className={`${PALETTE.ACCENT_BG} text-white p-4`}>
-          <Link
-            href="/login"
-            className={`flex items-center justify-between bg-white ${PALETTE.TEXT_PRIMARY} py-2 px-3 rounded-md mb-2 font-bold hover:bg-gray-100 transition`}
-            onClick={handleLinkClick}
-          >
-            <span>Log in/Register</span>
-            <FiLogIn className="w-5 h-5" />
-          </Link>
+          {user ? (
+            <Link href="/profile" className="flex items-center z-40 gap-2">
+              <User className="w-5 h-5" />
+              <span>{user.username}</span>
+            </Link>
+          ) : (
+            <Link
+              href="/auth"
+              className={`flex items-center justify-between bg-white ${PALETTE.TEXT_PRIMARY} py-2 px-3 rounded-md mb-2 font-bold hover:bg-gray-100 transition`}
+              onClick={handleLinkClick}
+            >
+              <span>Log in/Register</span>
+              <FiLogIn className="w-5 h-5" />
+            </Link>
+          )}
           <p className="text-sm font-medium text-center">
             Shop the exclusive Men's Collection
             <span className="ml-1 text-yellow-300">🔥</span>

@@ -83,36 +83,31 @@ const CategoriesSection = () => {
   useEffect(() => {
     if (!sectionRef.current) return;
 
-    // Check screen size on mount and resize (can use matchMedia for better performance)
-    const checkScreenSize = () => {
-      // Tailwind's 'sm' breakpoint is 640px. We'll use a standard mobile/tablet breakpoint.
-      // If the screen is small (e.g., less than 768px - md breakpoint), we consider it mobile for the carousel.
-      const isCurrentMobile = window.innerWidth < 768;
-      setIsMobile(isCurrentMobile);
+    const mm = gsap.matchMedia();
 
-      // Only apply GSAP to the grid/non-carousel elements on larger screens
-      if (!isCurrentMobile) {
-        const cards = sectionRef.current.querySelectorAll(".category-card");
-        gsap.from(cards, {
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 85%",
-          },
-          opacity: 0,
-          y: 40,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: "power3.out",
-        });
-      } else {
-        // Kill any existing ScrollTrigger to prevent conflicts on mobile
-        ScrollTrigger.getAll().forEach((t) => t.kill());
-      }
+    mm.add("(min-width: 768px)", () => {
+      const cards = sectionRef.current.querySelectorAll(".category-card");
+
+      gsap.from(cards, {
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top 85%",
+        },
+        opacity: 0,
+        y: 40,
+        duration: 0.8,
+        stagger: 0.1,
+        ease: "power3.out",
+      });
+    });
+
+    mm.add("(max-width: 767px)", () => {
+      ScrollTrigger.getAll().forEach((t) => t.kill());
+    });
+
+    return () => {
+      mm.revert();
     };
-
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-    return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
   // --- RENDERING LOGIC ---

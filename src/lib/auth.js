@@ -4,7 +4,6 @@ import { States } from "./states";
 
 export function getAuthServer() {
   const token = getCookie("auth", { cookies });
-  console.log(token);
 
   if (!token) return null;
 
