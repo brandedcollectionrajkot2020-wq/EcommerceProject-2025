@@ -1,5 +1,5 @@
 import Order from "@/models/Order";
-import { generateInvoicePDF } from "@/utils/generateInvoice";
+import { generateInvoice } from "@/utils/generateInvoice";
 import { sendMail } from "@/utils/sendMail";
 
 export async function POST(req) {
@@ -7,7 +7,7 @@ export async function POST(req) {
 
   const order = await Order.create(orderData);
 
-  const pdf = await generateInvoicePDF(order);
+  const pdf = await generateInvoice(order);
 
   await sendMail({
     to: user.email,
