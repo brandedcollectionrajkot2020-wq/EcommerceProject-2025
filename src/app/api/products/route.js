@@ -4,6 +4,7 @@ import { uploadToGridFs, deleteFromGridFs } from "@/lib/gridFsClient";
 import mongoose from "mongoose";
 import { connectDb } from "@/lib/dbConnect";
 import Products from "@/models/Products";
+import { getCache, setCache } from "@/lib/globalProductChache";
 
 export const dynamic = "force-dynamic";
 
@@ -151,118 +152,44 @@ export async function POST(request) {
 
 // --- GET HANDLER (Filtering and Sorting) ---
 
-export async function GET(request) {
-  // ... GET handler logic is unchanged and is omitted for brevity but should be included here ...
-  // (Your original GET handler code goes here)
+export async function GET(req) {
   await connectDb();
 
-  try {
-    const { searchParams } = new URL(request.url);
+  const cache = getCache();
 
-    // --- 1. Define Filter Query ($match) ---
-    let filter = {};
+  if (!cache.products.length) {
+    console.log("⚡ Loading Products Into Global Cache...");
+    const dbData = await Products.find().lean({ virtuals: true });
+    setCache(dbData);
+  }
 
-    const categories = searchParams.get("categories")?.split(",");
-    if (categories && categories.length > 0) {
-      filter.$or = [
-        { filterableCategories: { $in: categories } },
-        { category: { $in: categories } },
-      ];
-    }
+  const { searchParams } = new URL(req.url);
+  const page = Number(searchParams.get("page")) || 1;
+  const limit = 10;
 
-    const sizes = searchParams.get("sizes")?.split(",");
-    if (sizes && sizes.length > 0) {
-      filter.availableSizes = { $in: sizes };
-    }
+  const search = searchParams.get("search")?.trim() || "";
+  const category = searchParams.get("category") || "All";
+  const size = searchParams.get("size") || "";
 
-    const themes = searchParams.get("themes")?.split(",");
-    if (themes && themes.length > 0) {
-      filter.theme = { $in: themes };
-    }
+  let result = [...cache.products];
 
-    const priceRange = searchParams.get("priceRange");
-    if (priceRange) {
-      const [min, max] = priceRange.split("-").map(Number);
-      if (!isNaN(min))
-        filter["price.current"] = { ...filter["price.current"], $gte: min };
-      if (!isNaN(max))
-        filter["price.current"] = { ...filter["price.current"], $lte: max };
-    }
-
-    const flag = searchParams.get("flag");
-    if (flag) {
-      if (flag === "bestseller") filter.isBestseller = true;
-      if (flag === "newarrival") filter.isNewArrival = true;
-      if (flag === "recommended") filter.isRecommended = true;
-    }
-
-    // --- 2. Define Sorting ($sort) ---
-    const sortBy = searchParams.get("sortBy") || "createdAt_desc";
-    let sort = {};
-
-    switch (sortBy) {
-      case "price_asc":
-        sort["price.current"] = 1;
-        break;
-      case "price_desc":
-        sort["price.current"] = -1;
-        break;
-      case "newest":
-      case "createdAt_desc":
-        sort.createdAt = -1;
-        break;
-      case "popular":
-        sort.salesCount = -1;
-        break;
-      case "name_asc":
-        sort.name = 1;
-        break;
-      default:
-        sort.createdAt = -1;
-        break;
-    }
-
-    // --- 3. Pagination ($skip, $limit) ---
-    const page = parseInt(searchParams.get("page")) || 1;
-    const limit = parseInt(searchParams.get("limit")) || 20;
-    const skip = (page - 1) * limit;
-
-    // --- 4. Execute Query ---
-    const productsPromise = Products.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .exec();
-
-    const totalCountPromise = Products.countDocuments(filter);
-
-    const [products, totalCount] = await Promise.all([
-      productsPromise,
-      totalCountPromise,
-    ]);
-
-    return NextResponse.json({
-      status: "success",
-      results: products.length,
-      page: page,
-      totalPages: Math.ceil(totalCount / limit),
-      totalProducts: totalCount,
-      products: products.map((p) => p.toObject({ virtuals: true })),
-    });
-  } catch (error) {
-    console.error("Product GET API Error:", error);
-    return NextResponse.json(
-      {
-        status: "error",
-        message: "Failed to fetch products",
-        details: error.message,
-      },
-      { status: 500 }
+  if (search) {
+    result = result.filter((item) =>
+      JSON.stringify(item).toLowerCase().includes(search.toLowerCase())
     );
   }
-}
 
-// --- DELETE HANDLER (Delete Product and GridFS Images) ---
+  if (category !== "All")
+    result = result.filter((p) => p.category === category);
+  if (size) result = result.filter((p) => p.availableSizes?.includes(size));
+
+  const paginated = result.slice((page - 1) * limit, page * limit);
+
+  return NextResponse.json({
+    products: paginated,
+    hasMore: page * limit < result.length, // 👈 THIS STOPS SCROLL
+  });
+}
 
 // NOTE: This assumes DELETE is called with the product ID in the query, e.g., /api/products?id=12345
 export async function DELETE(request) {

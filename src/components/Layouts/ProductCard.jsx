@@ -34,6 +34,7 @@ export default function ProductCard({ product }) {
   };
 
   const item = product || fallbackProduct;
+  console.log(item);
 
   // ❤️ Wishlist
   const wishlist = useAppStore((s) => s.wishlist);
@@ -59,7 +60,7 @@ export default function ProductCard({ product }) {
           onMouseLeave={() => setHover(false)}
         >
           <Image
-            src={item.imageFront}
+            src={`/api/images/${item.imageFrontFileId}`}
             alt={item.name}
             fill
             className={`object-cover transition duration-500 ${
@@ -68,7 +69,7 @@ export default function ProductCard({ product }) {
           />
 
           <Image
-            src={item.imageBack}
+            src={`/api/images/${item.imageBackFileId}`}
             alt="back"
             fill
             className={`object-cover transition duration-500 ${

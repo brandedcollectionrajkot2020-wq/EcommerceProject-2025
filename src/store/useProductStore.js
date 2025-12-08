@@ -1,45 +1,40 @@
-"use client";
+// store/useProductsStore.js
 import { create } from "zustand";
+import toast from "react-hot-toast";
 
 export const useProductsStore = create((set, get) => ({
   products: [],
   page: 1,
   hasMore: true,
-  filters: {
-    category: null,
-    size: null,
-    flag: null,
-  },
-
-  setFilter: (key, value) =>
-    set((state) => ({
-      filters: { ...state.filters, [key]: value },
-      page: 1,
-      products: [],
-      hasMore: true,
-    })),
+  loading: false,
 
   fetchProducts: async () => {
-    if (!get().hasMore) return;
+    const { page, products, loading } = get();
 
-    const { page, filters, products } = get();
-    const query = new URLSearchParams({
-      page,
-      limit: 20,
-      ...filters,
-    }).toString();
+    if (loading) return; // prevent double fetch
+    set({ loading: true });
 
-    const res = await fetch(`/api/products?${query}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`/api/products?page=${page}`);
+      const data = await res.json();
 
-    if (data.products.length === 0) {
-      set({ hasMore: false });
-      return;
+      if (!data?.products) {
+        set({ hasMore: false, loading: false });
+        return;
+      }
+
+      set({
+        products: [...products, ...data.products],
+        page: page + 1,
+        hasMore: data.hasMore,
+        loading: false,
+      });
+    } catch (err) {
+      toast.error("❌ Failed loading products");
+      console.log("PRODUCT STORE ERROR:", err);
+      set({ loading: false });
     }
-
-    set({
-      products: [...products, ...data.products],
-      page: page + 1,
-    });
   },
+
+  resetProducts: () => set({ products: [], page: 1, hasMore: true }),
 }));

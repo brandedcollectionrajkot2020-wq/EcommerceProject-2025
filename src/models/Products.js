@@ -1,10 +1,9 @@
 import mongoose from "mongoose";
+import slugify from "slugify"; // <— ADD THIS (npm i slugify)
 
 const { Schema } = mongoose;
 
-/**
- * Sub-Schema for the pricing structure
- */
+/** ---------- Price Schema ---------- */
 const PriceSchema = new Schema(
   {
     current: { type: Number, required: true },
@@ -14,170 +13,138 @@ const PriceSchema = new Schema(
   { _id: false }
 );
 
-/**
- * Sub-Schema for Product Detail Specifications (e.g., Fabric, Fit, Wash)
- */
 const SpecificationSchema = new Schema(
   {
-    key: { type: String, required: true, trim: true }, // e.g., "Fabric"
-    value: { type: String, required: true, trim: true }, // e.g., "100% Cotton, 240 GSM"
+    key: { type: String, required: true, trim: true },
+    value: { type: String, required: true, trim: true },
   },
   { _id: false }
 );
 
-/**
- * Sub-Schema for gallery images (Updated for GridFS)
- */
 const GalleryImageSchema = new Schema(
   {
-    fileId: { type: Schema.Types.ObjectId, required: true }, // GridFS file ID
+    fileId: { type: Schema.Types.ObjectId, required: true },
     filename: { type: String, required: true },
   },
   { _id: false }
 );
 
-/**
- * Main Product Schema
- */
-const ProductSchema = new Schema({
-  // --- Product Details ---
-  name: {
-    type: String,
-    required: [true, "Product name is required"],
-    trim: true,
-    index: true,
-  },
-  category: {
-    type: String,
-    required: [true, "Product primary category is required"],
-    trim: true,
-    index: true,
-  },
-  price: {
-    type: PriceSchema,
-    required: true,
-  },
+/** ---------- MAIN PRODUCT SCHEMA ---------- */
+const ProductSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    slug: { type: String, unique: true, index: true }, // 🔥 Slug added
 
-  // --- Image Storage: GridFS Fields (Main Images) ---
-  imageFrontFileId: {
-    type: Schema.Types.ObjectId,
-    required: [true, "Front image file ID is required"],
-  },
-  imageBackFileId: {
-    type: Schema.Types.ObjectId,
-  },
-  imageFrontFilename: {
-    // Storing filename is good for reference
-    type: String,
-    required: true,
-  },
-  imageBackFilename: {
-    type: String,
-  },
-  // --- End GridFS Fields ---
+    brand: { type: String, default: "Branded Collection" },
+    category: { type: String, required: true, trim: true },
+    subcategory: { type: String, trim: true },
 
-  // --- NEW: Detailed Product Fields for Product Detail Page ---
-  description: {
-    type: String,
-    trim: true,
-    maxlength: 1000,
-  },
-  // Specifications for the table display (e.g., Material, Neck Style)
-  specifications: [SpecificationSchema],
+    price: { type: PriceSchema, required: true },
 
-  // Care and Material Notes
-  material: {
-    type: String,
-    trim: true,
-  },
-  careInstructions: {
-    type: String,
-    trim: true,
-  },
+    imageFrontFileId: { type: Schema.Types.ObjectId, required: true },
+    imageBackFileId: { type: Schema.Types.ObjectId },
+    imageFrontFilename: { type: String, required: true },
+    imageBackFilename: { type: String },
 
-  // Gallery for extra product views (uses the updated GalleryImageSchema)
-  gallery: [GalleryImageSchema],
+    description: { type: String },
+    specifications: [SpecificationSchema],
+    material: { type: String },
+    careInstructions: { type: String },
 
-  badges: [
-    {
-      type: String,
-      trim: true,
-    },
-  ],
+    gallery: [GalleryImageSchema],
 
-  // --- Filterable Fields ---
-  filterableCategories: [
-    {
-      type: String,
-      index: true,
-    },
-  ],
-  availableSizes: [
-    {
-      type: String,
-      enum: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
-      required: true,
-      index: true,
-    },
-  ],
-  theme: {
-    type: String,
-    index: true,
-  },
+    tags: [{ type: String }],
+    availableSizes: [
+      {
+        type: String,
+        enum: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+      },
+    ],
 
-  // --- Special Product Flags/Tags ---
-  isNewArrival: {
-    type: Boolean,
-    default: false,
-    index: true,
-  },
-  isBestseller: {
-    type: Boolean,
-    default: false,
-    index: true,
-  },
-  isRecommended: {
-    type: Boolean,
-    default: false,
-    index: true,
-  },
+    isNewArrival: { type: Boolean, default: false },
+    isBestseller: { type: Boolean, default: false },
+    featured: { type: Boolean, default: false },
 
-  salesCount: {
-    type: Number,
-    default: 0,
+    salesCount: { type: Number, default: 0 },
+    stock: { type: Number, default: 100 },
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
 
-// --- Virtuals (Generate URLs for client use) ---
-// Assumes an image serving route: /api/images/:fileId
-ProductSchema.virtual("imageFrontUrl").get(function () {
+/** ----------------------------------
+🔥 VIRTUAL IMAGE URLs
+---------------------------------- **/
+
+ProductSchema.virtual("imageFront").get(function () {
   return this.imageFrontFileId ? `/api/images/${this.imageFrontFileId}` : null;
 });
 
-ProductSchema.virtual("imageBackUrl").get(function () {
+ProductSchema.virtual("imageBack").get(function () {
   return this.imageBackFileId ? `/api/images/${this.imageBackFileId}` : null;
 });
 
-// Alias for client-side consumption
-ProductSchema.virtual("imageFront").get(function () {
-  return this.imageFrontUrl;
+ProductSchema.virtual("galleryUrls").get(function () {
+  return this.gallery?.map((g) => ({
+    url: `/api/images/${g.fileId}`,
+    filename: g.filename,
+  }));
 });
 
-ProductSchema.virtual("imageBack").get(function () {
-  return this.imageBackUrl;
+/** ----------------------------------
+⭐ TEXT SEARCH INDEX
+---------------------------------- **/
+ProductSchema.index(
+  {
+    name: "text",
+    brand: "text",
+    category: "text",
+    subcategory: "text",
+    description: "text",
+    material: "text",
+    tags: "text",
+    "specifications.key": "text",
+    "specifications.value": "text",
+  },
+  {
+    name: "ProductTextIndex",
+    weights: {
+      name: 10,
+      brand: 8,
+      category: 7,
+      material: 6,
+      tags: 5,
+      description: 4,
+      "specifications.value": 3,
+    },
+  }
+);
+
+/** ----------------------------------
+🔥 PRE-SAVE HOOK WITH SLUG BUILDER
+---------------------------------- **/
+ProductSchema.pre("save", async function (next) {
+  if (!this.isModified("name")) return next();
+
+  const baseSlug = slugify(this.name, {
+    lower: true,
+    strict: true, // remove symbols
+  });
+
+  let newSlug = baseSlug;
+  let counter = 1;
+
+  // ensure unique slug
+  while (await mongoose.models.Product.findOne({ slug: newSlug })) {
+    newSlug = `${baseSlug}-${counter++}`;
+  }
+
+  this.slug = newSlug;
+  next();
 });
 
-ProductSchema.set("toJSON", { virtuals: true });
-ProductSchema.set("toObject", { virtuals: true });
-
-const Products =
-  mongoose.models.Product || mongoose.model("Product", ProductSchema);
-export default Products;
+export default mongoose.models.Product ||
+  mongoose.model("Product", ProductSchema);

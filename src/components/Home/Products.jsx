@@ -41,7 +41,7 @@ export default function Products() {
         hasMore={hasMore}
         loader={<p className="text-center py-6 text-gray-500">Loading...</p>}
       >
-        <div className="grid max-w-7xl mx-auto grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4 px-4 py-6 sm:px-6 md:px-10">
+        <div className="grid max-w-7xl mx-auto grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4 px-4 py-6 sm:px-6 md:px-10">
           {products.map((p) => (
             <ProductCard key={p._id} product={p} />
           ))}

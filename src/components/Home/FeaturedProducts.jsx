@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ProductCard from "../Layouts/ProductCard";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay, Navigation } from "swiper/modules";
@@ -8,7 +8,7 @@ import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
 
-// ---- Temporary Fake Data ----
+// Optional fallback dummy data
 const dummyProducts = [
   {
     _id: "1",
@@ -28,31 +28,43 @@ const dummyProducts = [
     imageBack: "/dummy/back2.jpg",
     availableSizes: ["M", "L", "XL"],
   },
-  {
-    _id: "3",
-    name: "Vintage Denim Jacket",
-    category: "Jackets",
-    price: { current: 2499 },
-    imageFront: "/dummy/front3.jpg",
-    imageBack: "/dummy/back3.jpg",
-    availableSizes: ["L", "XL"],
-  },
-  {
-    _id: "4",
-    name: "Cartoon Hoodie",
-    category: "Hoodies",
-    price: { current: 1599 },
-    imageFront: "/dummy/front4.jpg",
-    imageBack: "/dummy/back4.jpg",
-    availableSizes: ["S", "M", "L", "XL"],
-  },
 ];
 
-export default function FeaturedProducts({ products }) {
+export default function FeaturedProducts() {
   const swiperRef = useRef(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // if real product not passed then use dummy
-  const list = products?.length ? products : dummyProducts;
+  // 🔥 Fetch only featured products from backend
+  const fetchFeatured = async () => {
+    try {
+      const res = await fetch(`/api/products?featured=true`);
+      const data = await res.json();
+
+      if (data?.products?.length > 0) {
+        setProducts(data.products);
+      } else {
+        setProducts(dummyProducts);
+      }
+    } catch (err) {
+      console.log("Featured Fetch Error:", err);
+      setProducts(dummyProducts); // fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeatured();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="py-16 text-center text-gray-400">
+        Loading Featured Products...
+      </div>
+    );
+  }
 
   return (
     <section className="py-12 bg-[#fafafa]">
@@ -69,29 +81,27 @@ export default function FeaturedProducts({ products }) {
         </div>
 
         {/* ---- SLIDER ---- */}
-        <div className="relative">
-          <Swiper
-            modules={[Pagination, Autoplay, Navigation]}
-            autoplay={{ delay: 3500, disableOnInteraction: false }}
-            loop
-            pagination={{ clickable: true, dynamicBullets: true }}
-            onSwiper={(swiper) => (swiperRef.current = swiper)}
-            breakpoints={{
-              0: { slidesPerView: 1 },
-              640: { slidesPerView: 2 },
-              1024: { slidesPerView: 3 },
-              1280: { slidesPerView: 4 },
-            }}
-            spaceBetween={24}
-            className="pb-12"
-          >
-            {list.map((item) => (
-              <SwiperSlide key={item._id}>
-                <ProductCard product={item} />
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </div>
+        <Swiper
+          modules={[Pagination, Autoplay, Navigation]}
+          autoplay={{ delay: 3500, disableOnInteraction: false }}
+          loop
+          pagination={{ clickable: true, dynamicBullets: true }}
+          onSwiper={(swiper) => (swiperRef.current = swiper)}
+          breakpoints={{
+            0: { slidesPerView: 1 },
+            640: { slidesPerView: 2 },
+            1024: { slidesPerView: 3 },
+            1280: { slidesPerView: 4 },
+          }}
+          spaceBetween={24}
+          className="pb-12"
+        >
+          {products.map((item) => (
+            <SwiperSlide key={item._id}>
+              <ProductCard product={item} />
+            </SwiperSlide>
+          ))}
+        </Swiper>
       </div>
     </section>
   );

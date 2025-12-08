@@ -1,0 +1,21 @@
+let cache = {
+  products: [],
+  lastSync: null,
+};
+
+export const getCache = () => cache;
+
+export const setCache = (data) => {
+  cache.products = data;
+  cache.lastSync = Date.now();
+};
+
+export const updateCacheItem = (item) => {
+  const i = cache.products.findIndex((p) => p._id === item._id);
+  if (i > -1) cache.products[i] = item;
+  else cache.products.push(item);
+};
+
+export const removeCacheItem = (id) => {
+  cache.products = cache.products.filter((p) => p._id !== id);
+};

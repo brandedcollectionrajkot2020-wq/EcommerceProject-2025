@@ -7,9 +7,9 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import toast from "react-hot-toast";
 
-// STORES 🧠
-import { useAppStore } from "@/store/useAppStore"; // Wishlist
-import { useCartStore } from "@/store/useCartStore"; // CART 🔥
+// STORES
+import { useAppStore } from "@/store/useAppStore";
+import { useCartStore } from "@/store/useCartStore";
 import CartModal from "../Layouts/CartModal";
 
 const PALETTE = {
@@ -21,33 +21,43 @@ const PALETTE = {
 };
 
 export default function ProductDetailsClient({ product }) {
-  // ===== STORE LOGIC =====
-  const { wishlist, addToWishlist, removeFromWishlist } = useAppStore();
-  const isWishlisted = wishlist.some((w) => w._id === product._id);
-
-  const addToCart = useCartStore((s) => s.addToCart); // ⬅ REAL CART SYSTEM
-
-  // ===== UI STATES =====
-  const [cartOpen, setCartOpen] = useState(false);
-  const [added, setAdded] = useState(false);
-  const [selectedSize, setSelectedSize] = useState(null);
-  const [openAccordion, setOpenAccordion] = useState(null);
+  // ------- Image Fix (Matches Schema) -------
+  const imgFront = product?.imageFront || "/assets/placeholder.jpg";
+  const imgBack = product?.imageBack || null;
 
   const gallery = useMemo(() => {
-    const extra = product.gallery?.map((g) => `/api/images/${g.fileId}`) ?? [];
-    return [product.imageFront, ...extra].filter(Boolean);
+    const extra = product?.gallery?.map((g) => `/api/images/${g.fileId}`) || [];
+    return [imgFront, imgBack, ...extra].filter(Boolean);
   }, [product]);
+
+  // ------- Wishlist -------
+  const { wishlist, addToWishlist, removeFromWishlist } = useAppStore();
+  const isWishlisted = wishlist.some((item) => item._id === product._id);
 
   const toggleWishlist = () => {
     isWishlisted ? removeFromWishlist(product._id) : addToWishlist(product);
   };
 
+  // ------- Cart -------
+  const addToCart = useCartStore((s) => s.addToCart);
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [added, setAdded] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+
   const handleAddToCart = () => {
     if (!selectedSize) return toast.error("Select a size first 👕");
 
-    addToCart({ ...product, selectedSize }); // ⬅ FINAL FIX
+    addToCart({
+      _id: product._id,
+      name: product.name,
+      selectedSize,
+      price: product.price.current,
+      imageFront: imgFront,
+      availableSizes: product.availableSizes,
+    });
+
     setAdded(true);
-    toast.success(`Added 🛒 (${selectedSize})`);
+    toast.success(`Added to Cart 🛍 (${selectedSize})`);
   };
 
   return (
@@ -59,7 +69,7 @@ export default function ProductDetailsClient({ product }) {
       </p>
 
       <div className="grid lg:grid-cols-[2fr_1fr] gap-10">
-        {/* 🖼 Images */}
+        {/* 🖼 Desktop Images */}
         <div className="hidden lg:grid grid-cols-2 gap-6">
           {gallery.map((img, i) => (
             <div
@@ -76,8 +86,8 @@ export default function ProductDetailsClient({ product }) {
           ))}
         </div>
 
-        {/* 📱 Mobile Swiper */}
-        <div className="md:hidden">
+        {/* 📱 Mobile Carousel */}
+        <div className="lg:hidden">
           <Swiper>
             {gallery.map((img, i) => (
               <SwiperSlide key={i}>
@@ -94,53 +104,53 @@ export default function ProductDetailsClient({ product }) {
           </Swiper>
         </div>
 
-        {/* ===== RIGHT CONTENT ===== */}
-        <div className="lg:sticky lg:top-10 space-y-6">
+        {/* ================= Right Panel ================= */}
+        <div className="lg:sticky lg:top-10 space-y-6 scrollbar-hide">
           {/* Title */}
           <h1 className={`text-3xl font-semibold ${PALETTE.TEXT}`}>
             {product.name}
           </h1>
 
-          {/* ❤️ Wishlist */}
+          {/* Wishlist */}
           <button
             onClick={toggleWishlist}
             className={`p-2 border rounded-md transition ${PALETTE.BORDER} ${PALETTE.TEXT} hover:bg-[#deb887]`}
           >
-            <Heart className={`${isWishlisted ? "fill-[#654321]" : ""}`} />
+            <Heart
+              className={`${isWishlisted ? "fill-red-500 text-red-500" : ""}`}
+            />
           </button>
 
-          {/* 💸 PRICE */}
+          {/* PRICE */}
           <div className={`border-y py-4 ${PALETTE.BORDER}`}>
             <p className={`text-3xl font-bold ${PALETTE.TEXT}`}>
-              ₹{product.price.current}
+              ₹{product.price?.current}
             </p>
           </div>
 
-          {/* 👕 SIZE SELECTOR */}
+          {/* SIZE SELECTOR */}
           <div>
             <p className={`text-xs uppercase mb-2 ${PALETTE.TEXT}`}>
-              select size
+              Select Size
             </p>
             <div className="flex gap-2 flex-wrap">
-              {product.availableSizes.map((size) => (
+              {product.availableSizes?.map((s) => (
                 <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`px-5 py-2 rounded-md text-sm border transition
-                    ${
-                      selectedSize === size
-                        ? `${PALETTE.ACCENT} text-white`
-                        : `${PALETTE.BORDER} ${PALETTE.TEXT} hover:bg-[#deb887]`
-                    }
-                  `}
+                  key={s}
+                  onClick={() => setSelectedSize(s)}
+                  className={`px-5 py-2 rounded-md text-sm border transition ${
+                    selectedSize === s
+                      ? `${PALETTE.ACCENT} text-white`
+                      : `${PALETTE.BORDER} ${PALETTE.TEXT} hover:bg-[#deb887]`
+                  }`}
                 >
-                  {size}
+                  {s}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 🛒 ADD TO CART */}
+          {/* ADD TO CART */}
           {!added ? (
             <button
               onClick={handleAddToCart}
@@ -156,6 +166,14 @@ export default function ProductDetailsClient({ product }) {
               <CheckCircle2 className="w-5 h-5" /> Go To Cart
             </button>
           )}
+
+          {/* Description */}
+          <div>
+            <h3 className={`text-lg font-semibold mt-4 ${PALETTE.TEXT}`}>
+              Description
+            </h3>
+            <p className="text-sm text-gray-600">{product.description}</p>
+          </div>
         </div>
       </div>
 
