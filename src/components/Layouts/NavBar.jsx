@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import React, { useEffect, useState, useRef } from "react";
 import { CgClose, CgMenu } from "react-icons/cg";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
@@ -429,7 +429,7 @@ const NavBar = () => {
             )}
           </button>
 
-          <button onClick={() => setCartOpen(true)} className="relative">
+          <button onClick={() => redirect("/cart")} className="relative">
             <ShoppingCart className="w-6 h-6 text-[#654321]" />
             {cartCount > 0 && (
               <span className="absolute -top-1 -right-2 text-xs bg-[#654321] text-white rounded-full px-1">

@@ -11,6 +11,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useCartStore } from "@/store/useCartStore";
 import CartModal from "../Layouts/CartModal";
 import ProductCard from "../Layouts/ProductCard";
+import { redirect } from "next/navigation";
 
 const PALETTE = {
   BACKGROUND: "bg-[#fff9f4]",
@@ -175,7 +176,7 @@ export default function ProductDetailsClient({ product }) {
             </button>
           ) : (
             <button
-              onClick={() => setCartOpen(true)}
+              onClick={() => redirect("/cart")}
               className={`w-full py-3 border ${PALETTE.BORDER} rounded-md flex items-center justify-center gap-2 font-semibold ${PALETTE.TEXT} hover:bg-[#deb88740]`}
             >
               <CheckCircle2 className="w-5 h-5" /> Go To Cart
