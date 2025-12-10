@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { Heart, ShoppingBag, CheckCircle2 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import toast from "react-hot-toast";
 
-// STORES
 import { useAppStore } from "@/store/useAppStore";
 import { useCartStore } from "@/store/useCartStore";
 import CartModal from "../Layouts/CartModal";
+import ProductCard from "../Layouts/ProductCard";
 
 const PALETTE = {
   BACKGROUND: "bg-[#fff9f4]",
@@ -21,8 +21,8 @@ const PALETTE = {
 };
 
 export default function ProductDetailsClient({ product }) {
-  // ------- Image Fix (Matches Schema) -------
-  const imgFront = product?.imageFront || "/assets/placeholder.jpg";
+  // ------- Image Fix -------
+  const imgFront = product?.imageFront || null;
   const imgBack = product?.imageBack || null;
 
   const gallery = useMemo(() => {
@@ -30,7 +30,21 @@ export default function ProductDetailsClient({ product }) {
     return [imgFront, imgBack, ...extra].filter(Boolean);
   }, [product]);
 
-  // ------- Wishlist -------
+  // Recommendation
+  const [recommended, setRecommended] = useState([]);
+
+  useEffect(() => {
+    async function loadRecs() {
+      const res = await fetch(
+        `/api/products/recommendations?id=${product._id}`
+      );
+      const data = await res.json();
+      setRecommended(data.recommendations || []);
+    }
+    loadRecs();
+  }, [product._id]);
+
+  // Wishlist
   const { wishlist, addToWishlist, removeFromWishlist } = useAppStore();
   const isWishlisted = wishlist.some((item) => item._id === product._id);
 
@@ -38,7 +52,7 @@ export default function ProductDetailsClient({ product }) {
     isWishlisted ? removeFromWishlist(product._id) : addToWishlist(product);
   };
 
-  // ------- Cart -------
+  // Cart
   const addToCart = useCartStore((s) => s.addToCart);
   const [selectedSize, setSelectedSize] = useState(null);
   const [added, setAdded] = useState(false);
@@ -61,7 +75,9 @@ export default function ProductDetailsClient({ product }) {
   };
 
   return (
-    <div className={`max-w-[1400px] mx-auto px-4 py-10 ${PALETTE.BACKGROUND}`}>
+    <div
+      className={`max-w-[1400px] mx-auto px-4 py-10 ${PALETTE.BACKGROUND} overflow-x-hidden`}
+    >
       {/* 🧭 Breadcrumb */}
       <p className={`text-xs opacity-60 mb-4 ${PALETTE.TEXT}`}>
         Home / {product.category} /{" "}
@@ -69,12 +85,12 @@ export default function ProductDetailsClient({ product }) {
       </p>
 
       <div className="grid lg:grid-cols-[2fr_1fr] gap-10">
-        {/* 🖼 Desktop Images */}
+        {/* 🖼 DESKTOP IMAGES */}
         <div className="hidden lg:grid grid-cols-2 gap-6">
           {gallery.map((img, i) => (
             <div
               key={i}
-              className="relative h-[650px] rounded-lg overflow-hidden bg-[#ebdfd6]"
+              className="relative w-full h-[650px] rounded-lg overflow-hidden bg-[#ebdfd6]"
             >
               <Image
                 src={img}
@@ -86,12 +102,12 @@ export default function ProductDetailsClient({ product }) {
           ))}
         </div>
 
-        {/* 📱 Mobile Carousel */}
-        <div className="lg:hidden">
+        {/* 📱 MOBILE + TABLET SWIPER */}
+        <div className="lg:hidden w-full max-w-full overflow-hidden">
           <Swiper>
             {gallery.map((img, i) => (
               <SwiperSlide key={i}>
-                <div className="relative h-[450px] bg-[#ead9c9] rounded-xl">
+                <div className="relative w-full h-[420px] sm:h-[480px] rounded-xl overflow-hidden bg-[#ead9c9]">
                   <Image
                     src={img}
                     fill
@@ -104,9 +120,8 @@ export default function ProductDetailsClient({ product }) {
           </Swiper>
         </div>
 
-        {/* ================= Right Panel ================= */}
-        <div className="lg:sticky lg:top-10 space-y-6 scrollbar-hide">
-          {/* Title */}
+        {/* RIGHT PANEL */}
+        <div className="lg:sticky lg:top-10 space-y-6 overflow-x-hidden">
           <h1 className={`text-3xl font-semibold ${PALETTE.TEXT}`}>
             {product.name}
           </h1>
@@ -128,7 +143,7 @@ export default function ProductDetailsClient({ product }) {
             </p>
           </div>
 
-          {/* SIZE SELECTOR */}
+          {/* Size */}
           <div>
             <p className={`text-xs uppercase mb-2 ${PALETTE.TEXT}`}>
               Select Size
@@ -150,7 +165,7 @@ export default function ProductDetailsClient({ product }) {
             </div>
           </div>
 
-          {/* ADD TO CART */}
+          {/* Add to Cart */}
           {!added ? (
             <button
               onClick={handleAddToCart}
@@ -178,6 +193,21 @@ export default function ProductDetailsClient({ product }) {
       </div>
 
       {cartOpen && <CartModal close={() => setCartOpen(false)} />}
+
+      {/* ================= Recommended ================= */}
+      {recommended.length > 0 && (
+        <div className="mt-16">
+          <h2 className={`text-2xl font-semibold mb-4 ${PALETTE.TEXT}`}>
+            You may also like
+          </h2>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+            {recommended.map((prod, idx) => (
+              <ProductCard product={prod} key={idx} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

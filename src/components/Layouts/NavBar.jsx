@@ -1,283 +1,330 @@
 "use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { CgClose, CgMenu } from "react-icons/cg";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
-import {
-  FiSearch,
-  FiUser,
-  FiHeart,
-  FiShoppingBag,
-  FiLogIn,
-} from "react-icons/fi";
+import { FiSearch, FiUser, FiLogIn } from "react-icons/fi";
+import { Heart, ShoppingCart, User } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import WishlistModal from "./WishlistModal";
 import CartModal from "./CartModal";
-import { Heart, ShoppingCart, User } from "lucide-react";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore } from "@/store/useCartStore";
-// import { jwtDecode } from "jwt-decode";
-// import { cookies } from "next/headers";
 
-// --- Color Palette ---
+/* -------------------------
+   COLOR PALETTE (DO NOT TOUCH UI)
+------------------------- */
 const PALETTE = {
-  BG_LIGHT: "bg-[#FAF0E6]", // Light Beige
-  BORDER_ACCENT: "border-[#DEB887]", // Tan/Brown Border
-  TEXT_PRIMARY: "text-[#654321]", // Dark Brown Text/Accent
+  BG_LIGHT: "bg-[#FAF0E6]",
+  BORDER_ACCENT: "border-[#DEB887]",
+  TEXT_PRIMARY: "text-[#654321]",
   HOVER_ACCENT: "hover:text-[#654321]",
-  ACCENT_BG: "bg-[#654321]", // Dark Brown BG
-  ACCENT_HOVER_BG: "hover:bg-[#DEB887]",
-  OVERLAY: "bg-[#4E342E]", // Darker Brown for overlay
-  LOGO_TEXT: "font-serif text-[#654321] tracking-wide",
+  ACCENT_BG: "bg-[#654321]",
+  OVERLAY: "bg-[#4E342E]",
 };
 
-// --- Data Structure (SIMPLIFIED FOR MEN'S ONLY) ---
+/* -------------------------
+   NAV LINKS (Edit URLs only)
+------------------------- */
 const navLinks = [
-  { name: "Men", href: "/men", mega: true }, // Retained: Men's Menu
-  { name: "New Arrivals", href: "/new-arrivals" }, // Retained
-  { name: "Best Sellers", href: "/best-sellers" }, // Retained
-  { name: "About Us", href: "/about-us" }, // Retained
-  { name: "Contact Us", href: "/contact-us" }, // Retained
+  { name: "Clothes", href: "/products?mainCategory=clothes", mega: true },
+  {
+    name: "Accessories",
+    href: "/products?mainCategory=accessories",
+    mega: true,
+  },
+  { name: "Shoes", href: "/products?mainCategory=shoes", mega: true },
+
+  // { name: "New Arrivals", href: "/products?newArrival=true" },
+  // { name: "Best Sellers", href: "/products?bestSeller=true" },
+
+  // { name: "About Us", href: "/about-us" },
+  // { name: "Contact Us", href: "/contact-us" },
 ];
 
-// Utility links are now empty as the necessary links are in navLinks
-const sidebarUtilityLinks = [];
-
-// Image categories for the mega menu (Adjusted for Men's focus)
-const imageCategories = [
-  { title: "SALE", img: "/assets/bf-sale.jpg", link: "/sale" },
-  { title: "T-Shirts", img: "/assets/all-topwear.jpg", link: "/topwear" },
-  { title: "Bottomwear", img: "/assets/all-bottoms.jpg", link: "/bottoms" },
-  { title: "Sneakers", img: "/assets/member-vault.jpg", link: "/sneakers" },
-];
-
+/* -------------------------
+   MEGA MENU DATA (safe to edit titles)
+------------------------- */
 const sidebarMegaData = {
-  Men: [
+  Clothes: [
     {
       title: "Topwear",
-      subs: ["All T-Shirts", "Oversized T-Shirts", "Sajana", "Shirts"],
+      subs: ["Oversized T-Shirts", "All T-Shirts", "Shirts", "Sajana"],
     },
     {
       title: "Bottomwear",
       subs: ["Pants", "Jeans", "Joggers", "Shorts & Boxers"],
     },
+  ],
+  Accessories: [
     {
       title: "Accessories",
       subs: ["Backpacks", "Perfumes", "Socks", "Caps", "Shoe Laces"],
     },
-    // Adding a general link group as placeholder for other main sections
-    {
-      title: "General",
-      subs: ["New Arrivals", "Best Sellers"],
-    },
+  ],
+  Shoes: [
+    { title: "Footwear", subs: ["Sneakers", "Sports Shoes", "Casual Shoes"] },
   ],
 };
 
-const Icon = {
-  cart: <FiShoppingBag className="w-6 h-6" />,
-};
-
-// Placeholder image path
 const placeholderImage = "/assets/placeholder.jpg";
 
+/* ===================================================================
+   NavBar Component (drop-in replacement)
+   - computes inline maxHeight for open mega menu
+   - makes mega body scrollable with overscroll containment
+=================================================================== */
 const NavBar = () => {
   const pathname = usePathname();
-  // Check if current path matches link href
   const isActive = (href) => pathname === href;
 
+  const headerRef = useRef(null); // used to compute available space
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
-
-  // State for the main sidebar (hamburger menu) open/close
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [openMegaMenu, setOpenMegaMenu] = useState("Clothes");
 
-  // *** CHANGE: Set 'Men' as the initial open mega menu ***
-  const [openMegaMenu, setOpenMegaMenu] = useState("Men");
-  // const { wishlist, cartCount } = useAppStore((s) => ({
-  //   wishlist: s.wishlist,
-  //   cartCount: s.cartCount(),
-  // }));
-  const { user, loading, getUser } = useUserStore();
+  const [megaMaxHeight, setMegaMaxHeight] = useState(0);
+
+  const { user, getUser } = useUserStore();
   const fetchCart = useCartStore((s) => s.fetchCart);
+  const wishlistCount = useAppStore((s) => s.wishlist.length);
+  const cartCount = useCartStore((s) => s.cartCount());
+
   useEffect(() => {
     getUser();
     fetchCart();
   }, [getUser, fetchCart]);
 
-  const wishlistCount = useAppStore((s) => s.wishlist.length);
-  const cartCount = useCartStore((s) => s.cartCount());
-  // Toggle the main sidebar and control body scrolling
+  // compute available height for mega menu body
+  const computeMegaMaxHeight = (menuOpenName) => {
+    // If no menu open, we don't care
+    if (!menuOpenName) {
+      setMegaMaxHeight(0);
+      return;
+    }
+
+    // headerRef may be null on first render; fallback to 160px header height
+    const headerEl = headerRef.current;
+    let headerBottom = 160; // fallback
+    if (headerEl) {
+      const rect = headerEl.getBoundingClientRect();
+      headerBottom = rect.bottom; // distance from top of viewport to bottom of header
+    }
+
+    const buffer = 16; // small gap from bottom
+    const available = Math.max(window.innerHeight - headerBottom - buffer, 160); // at least 160px
+    setMegaMaxHeight(available);
+  };
+
+  // recompute when window resizes, orientation change, or openMegaMenu changes
+  useEffect(() => {
+    computeMegaMaxHeight(openMegaMenu);
+
+    const onResize = () => computeMegaMaxHeight(openMegaMenu);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, [openMegaMenu]);
+
   const toggleSidebar = () => {
-    const newState = !isSidebarOpen;
-    setIsSidebarOpen(newState);
-    document.body.style.overflow = newState ? "hidden" : "auto";
+    const s = !isSidebarOpen;
+    setIsSidebarOpen(s);
+    document.body.style.overflow = s ? "hidden" : "auto";
   };
 
-  // Toggle the mega menu section (Men)
-  const toggleMegaMenu = (menuName) => {
-    // If the menu is already open, close it (set to null), otherwise open it
-    setOpenMegaMenu(openMegaMenu === menuName ? null : menuName);
+  const toggleMegaMenu = (menu) => {
+    const newName = openMegaMenu === menu ? null : menu;
+    setOpenMegaMenu(newName);
+    // compute immediately (helps on fast opens)
+    setTimeout(() => computeMegaMaxHeight(newName), 30);
   };
 
-  // Close everything when a link is clicked
   const handleLinkClick = () => {
     setIsSidebarOpen(false);
-    // Closing it here is standard UX for mobile navigation:
-    // setOpenMegaMenu(null);
     document.body.style.overflow = "auto";
   };
 
-  // --- Component for rendering Sidebar Links/Mega Menu ---
+  /* -------------------------------------------------------------------
+     SidebarContent: renders mega menus exactly like your old UI
+     - when open: the .megaBody uses inline style maxHeight in px and
+       overflowY: "auto" with overscrollBehavior 'contain' so it scrolls
+       inside the panel and does not propagate scroll to body.
+  ------------------------------------------------------------------- */
   const SidebarContent = ({ link }) => {
     const isMega = link.mega;
-    const isCurrentlyOpen = openMegaMenu === link.name;
+    const isOpen = openMegaMenu === link.name;
     const data = sidebarMegaData[link.name];
 
     if (isMega) {
       return (
         <div key={link.name} className={`border-b ${PALETTE.BORDER_ACCENT}`}>
           <button
-            className={`w-full text-left py-4 px-4 font-bold flex justify-between items-center text-lg ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT}`}
             onClick={() => toggleMegaMenu(link.name)}
+            className={`w-full text-left py-4 px-4 font-bold flex justify-between items-center text-lg ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT}`}
           >
             {link.name}
             <span className="text-xl text-gray-700">
-              {isCurrentlyOpen ? (
-                <MdKeyboardArrowUp />
-              ) : (
-                <MdKeyboardArrowDown />
-              )}
+              {isOpen ? <MdKeyboardArrowUp /> : <MdKeyboardArrowDown />}
             </span>
           </button>
 
-          {/* *** CHANGE APPLIED HERE: Added 'overflow-y-auto' to enable scrolling within the mega menu content. *** */}
+          {/* MEGA BODY */}
           <div
             className={`transition-all duration-300 ease-in-out overflow-hidden ${
-              isCurrentlyOpen
-                ? "max-h-[calc(100vh-160px)] opacity-100 overflow-y-auto" // Use calc(100vh - header_height) for better max-height definition
-                : "max-h-0 opacity-0"
+              isOpen ? "opacity-100" : "opacity-0"
             }`}
+            // we toggle the visual open/close via opacity + inline maxHeight on inner container
           >
-            {/* The core 'Men' sidebar content */}
-            {isMega && data && (
-              <div className="p-4 space-y-4">
-                {/* Top Row: Featured Collections (Image Grid) */}
-                <h3
-                  className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} mb-2`}
-                >
-                  FEATURED COLLECTIONS
-                </h3>
-                <div className="grid grid-cols-4 gap-2">
-                  {imageCategories.map((item, i) => (
-                    <Link
-                      href={item.link}
-                      key={i}
-                      className={`flex flex-col items-center text-center text-xs font-medium ${PALETTE.HOVER_ACCENT}`}
-                      onClick={handleLinkClick}
-                    >
-                      <div className="w-full aspect-square overflow-hidden rounded-full border border-gray-100 mb-1">
-                        <Image
-                          src={placeholderImage}
-                          alt={item.title}
-                          width={60}
-                          height={60}
-                          className="object-cover"
-                        />
-                      </div>
-                      {item.title.split(" ")[0]}
-                    </Link>
-                  ))}
-                </div>
+            {/* inner wrapper that becomes scrollable with a computed maxHeight */}
+            <div
+              className="p-4 space-y-4"
+              style={{
+                maxHeight: isOpen ? `${megaMaxHeight}px` : 0,
+                overflowY: isOpen ? "auto" : "hidden",
+                WebkitOverflowScrolling: "touch",
+                overscrollBehavior: "contain",
+                transition: "max-height 300ms ease",
+              }}
+            >
+              {/* FEATURED COLLECTIONS (keeps same UI) */}
+              <h3
+                className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} mb-2`}
+              >
+                FEATURED COLLECTIONS
+              </h3>
 
-                {/* Categories Section (Simplified Grid) */}
-                <h3
-                  className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} pt-4 mb-2`}
-                >
-                  Top Categories
-                </h3>
-                <div className="grid grid-cols-4 gap-2">
-                  {data
-                    .flatMap((d) => d.subs)
-                    .slice(0, 8)
-                    .map((subName, i) => (
+              <div className="grid grid-cols-4 gap-2">
+                {["SALE", "Topwear", "Bottomwear", "Sneakers"].map(
+                  (title, i) => {
+                    const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${title
+                      .toLowerCase()
+                      .replace(/ /g, "-")}`;
+                    return (
                       <Link
-                        href={`/products/${link.name.toLowerCase()}/${subName
-                          .toLowerCase()
-                          .replace(/ /g, "-")}`}
                         key={i}
-                        className={`flex flex-col items-center text-center text-xs font-medium ${PALETTE.HOVER_ACCENT}`}
+                        href={href}
                         onClick={handleLinkClick}
+                        className="flex flex-col items-center text-center text-xs font-medium"
                       >
-                        <div className="w-full aspect-square overflow-hidden rounded-lg border border-gray-100 mb-1">
+                        <div className="w-full aspect-square overflow-hidden rounded-full border border-gray-100 mb-1">
                           <Image
                             src={placeholderImage}
-                            alt={subName}
+                            alt={title}
                             width={60}
                             height={60}
                             className="object-cover"
                           />
                         </div>
-                        {subName.split(" ")[0]}
+                        {title}
                       </Link>
-                    ))}
-                </div>
+                    );
+                  }
+                )}
+              </div>
 
-                {/* Detailed Category Links */}
-                {data.map((cat, i) => (
-                  <div key={i} className="pt-2">
-                    <h4
-                      className={`text-sm font-bold ${PALETTE.TEXT_PRIMARY} mb-2`}
-                    >
-                      {cat.title}
-                    </h4>
-                    <ul className="space-y-1 text-sm text-gray-700 pl-2">
-                      {cat.subs.map((s, si) => (
+              {/* TOP CATEGORIES */}
+              <h3
+                className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} pt-4 mb-2`}
+              >
+                Top Categories
+              </h3>
+
+              <div className="grid grid-cols-4 gap-2">
+                {data
+                  ?.flatMap((d) => d.subs)
+                  .slice(0, 8)
+                  .map((sub, i) => {
+                    const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${sub
+                      .toLowerCase()
+                      .replace(/ /g, "-")}`;
+                    return (
+                      <Link
+                        key={i}
+                        href={href}
+                        onClick={handleLinkClick}
+                        className="flex flex-col items-center text-center text-xs font-medium"
+                      >
+                        <div className="w-full aspect-square overflow-hidden rounded-lg border border-gray-100 mb-1">
+                          <Image
+                            src={placeholderImage}
+                            alt={sub}
+                            width={60}
+                            height={60}
+                            className="object-cover"
+                          />
+                        </div>
+                        {sub}
+                      </Link>
+                    );
+                  })}
+              </div>
+
+              {/* DETAILED CATEGORY LIST */}
+              {data?.map((cat, i) => (
+                <div key={i} className="pt-2">
+                  <h4
+                    className={`text-sm font-bold ${PALETTE.TEXT_PRIMARY} mb-2`}
+                  >
+                    {cat.title}
+                  </h4>
+                  <ul className="space-y-1 text-sm text-gray-700 pl-2">
+                    {cat.subs.map((s, si) => {
+                      const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${s
+                        .toLowerCase()
+                        .replace(/ /g, "-")}`;
+                      return (
                         <li key={si}>
                           <Link
-                            href={`/products/${link.name.toLowerCase()}/${s
-                              .toLowerCase()
-                              .replace(/ /g, "-")}`}
-                            className={`block py-1 ${PALETTE.HOVER_ACCENT}`}
+                            href={href}
                             onClick={handleLinkClick}
+                            className="block py-1 hover:text-[#654321]"
                           >
                             {s}
                           </Link>
                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       );
     }
 
-    // Regular link
+    // non-mega link
     return (
       <Link
         key={link.name}
         href={link.href}
-        className={`block py-4 px-4 font-bold text-lg ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT} border-b ${PALETTE.BORDER_ACCENT}`}
         onClick={handleLinkClick}
+        className={`block py-4 px-4 font-bold text-lg ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT} border-b ${PALETTE.BORDER_ACCENT}`}
       >
         {link.name}
       </Link>
     );
   };
 
+  /* -------------------------------------------------------------------
+     RENDER - keep exact UI structure
+  ------------------------------------------------------------------- */
   return (
     <header
+      ref={headerRef}
       className={`sticky top-0 w-full z-50 ${PALETTE.BG_LIGHT} shadow-md`}
     >
-      {/* Top Bar (Hamburger/Logo/Search/Icons) */}
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* LEFT SIDE: HAMBURGER & MAIN CATEGORIES */}
+        {/* LEFT */}
         <div className="flex items-center space-x-6">
-          {/* 1. HAMBURGER BUTTON */}
           <button
             className={`${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT}`}
             onClick={toggleSidebar}
@@ -290,12 +337,11 @@ const NavBar = () => {
             )}
           </button>
 
-          {/* 2. MAIN CATEGORY LINKS (Desktop only - Regular links only) */}
           <ul
             className={`hidden lg:flex space-x-6 text-sm font-semibold uppercase ${PALETTE.TEXT_PRIMARY} h-full`}
           >
             {navLinks
-              .filter((link) => !link.mega)
+              .filter((l) => !l.mega)
               .map((link) => (
                 <li key={link.name} className="relative group">
                   <Link
@@ -309,7 +355,6 @@ const NavBar = () => {
                     }`}
                   >
                     {link.name}
-                    {/* Underline Indicator */}
                     <span
                       className={`absolute left-0 -bottom-1 h-0.5 ${
                         PALETTE.ACCENT_BG
@@ -322,22 +367,35 @@ const NavBar = () => {
                   </Link>
                 </li>
               ))}
+
+            {/* mega parents shown as links */}
+            {navLinks
+              .filter((l) => l.mega)
+              .map((link) => (
+                <li key={link.name} className="relative group">
+                  <Link
+                    href={`/products?mainCategory=${link.name.toLowerCase()}`}
+                    className={`relative py-1 transition-colors ${PALETTE.HOVER_ACCENT} text-gray-700`}
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
           </ul>
         </div>
 
-        {/* CENTER: LOGO */}
+        {/* CENTER LOGO */}
         <Link href="/" className="absolute left-1/2 transform -translate-x-1/2">
           <Image
-            src={"/assets/logo.png"}
+            src="/assets/logo.png"
             alt="Brand Logo"
             width={60}
             height={60}
           />
         </Link>
 
-        {/* RIGHT SIDE: SEARCH & ICONS */}
+        {/* RIGHT */}
         <div className="flex items-center space-x-4">
-          {/* Search Input (Desktop/Large Screen) */}
           <div className="hidden sm:block">
             <div className="relative">
               <input
@@ -354,7 +412,6 @@ const NavBar = () => {
             </div>
           </div>
 
-          {/* Icons (User link changed to login as requested) */}
           <Link
             href="/login"
             className={`hidden sm:block ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT} transition-colors`}
@@ -362,6 +419,7 @@ const NavBar = () => {
           >
             <FiUser className="w-6 h-6" />
           </Link>
+
           <button onClick={() => setWishlistOpen(true)} className="relative">
             <Heart className="w-6 h-6 text-[#654321]" />
             {wishlistCount > 0 && (
@@ -380,7 +438,6 @@ const NavBar = () => {
             )}
           </button>
 
-          {/* Search icon for Mobile */}
           <button
             className={`sm:hidden ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT}`}
             aria-label="Search"
@@ -390,9 +447,7 @@ const NavBar = () => {
         </div>
       </nav>
 
-      {/* --- SLIDING SIDEBAR DRAWER --- */}
-
-      {/* 1. Overlay */}
+      {/* OVERLAY */}
       <div
         className={`fixed inset-0 ${PALETTE.OVERLAY} transition-opacity z-40 ${
           isSidebarOpen ? "opacity-40" : "opacity-0 pointer-events-none"
@@ -400,7 +455,7 @@ const NavBar = () => {
         onClick={toggleSidebar}
       ></div>
 
-      {/* 2. Sidebar Content Panel */}
+      {/* SIDEBAR PANEL */}
       <div
         className={`fixed top-0 left-0 w-80 sm:w-96 h-full ${
           PALETTE.BG_LIGHT
@@ -408,12 +463,12 @@ const NavBar = () => {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Top Header Section (Log in/Register) */}
         <div className={`${PALETTE.ACCENT_BG} text-white p-4`}>
           {user ? (
             <Link href="/profile" className="flex items-center z-40 gap-2">
               <User className="w-5 h-5" />
-              <span>{user.username}</span>
+
+              <span>{user.firstName + " " + user.lastName}</span>
             </Link>
           ) : (
             <Link
@@ -425,19 +480,35 @@ const NavBar = () => {
               <FiLogIn className="w-5 h-5" />
             </Link>
           )}
+
           <p className="text-sm font-medium text-center">
             Shop the exclusive Men's Collection
             <span className="ml-1 text-yellow-300">🔥</span>
           </p>
         </div>
 
-        {/* Main Navigation Links (Men's Mega Menu + Regular Links) */}
         <div className="py-2">
-          {navLinks.map((link) => (
-            <SidebarContent key={link.name} link={link} />
+          {navLinks.map((l) => (
+            <SidebarContent key={l.name} link={l} />
           ))}
+          <Link
+            href="/about-us"
+            onClick={handleLinkClick}
+            className={`block py-4 px-4 font-bold text-lg ${PALETTE.TEXT_PRIMARY} border-b ${PALETTE.BORDER_ACCENT}`}
+          >
+            About Us
+          </Link>
+
+          <Link
+            href="/contact-us"
+            onClick={handleLinkClick}
+            className={`block py-4 px-4 font-bold text-lg ${PALETTE.TEXT_PRIMARY} border-b ${PALETTE.BORDER_ACCENT}`}
+          >
+            Contact Us
+          </Link>
         </div>
       </div>
+
       {wishlistOpen && <WishlistModal close={() => setWishlistOpen(false)} />}
       {cartOpen && <CartModal close={() => setCartOpen(false)} />}
     </header>

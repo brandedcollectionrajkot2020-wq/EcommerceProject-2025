@@ -100,6 +100,7 @@ export async function POST(request) {
       imageBackFileId: backBlobResult.id,
       imageBackFilename: backBlobResult.filename,
       gallery: galleryResults,
+      mainCategory: productData.mainCategory,
     };
 
     // --- 3. Save to MongoDB ---
@@ -169,7 +170,10 @@ export async function GET(req) {
 
   const search = searchParams.get("search")?.trim() || "";
   const category = searchParams.get("category") || "All";
+  const mainCategory = searchParams.get("mainCategory") || "";
   const size = searchParams.get("size") || "";
+  const minPrice = Number(searchParams.get("minPrice")) || 0;
+  const maxPrice = Number(searchParams.get("maxPrice")) || 999999;
 
   let result = [...cache.products];
 
@@ -181,7 +185,15 @@ export async function GET(req) {
 
   if (category !== "All")
     result = result.filter((p) => p.category === category);
+
+  if (mainCategory)
+    result = result.filter((p) => p.mainCategory === mainCategory);
+
   if (size) result = result.filter((p) => p.availableSizes?.includes(size));
+  result = result.filter((p) => {
+    const price = p?.price?.current ?? 0;
+    return price >= minPrice && price <= maxPrice;
+  });
 
   const paginated = result.slice((page - 1) * limit, page * limit);
 
@@ -189,6 +201,51 @@ export async function GET(req) {
     products: paginated,
     hasMore: page * limit < result.length, // 👈 THIS STOPS SCROLL
   });
+}
+// --- GET RECOMMENDATIONS (same category + similar price) ---
+export async function GET_RECOMMENDATIONS(req) {
+  await connectDb();
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json(
+      { message: "Product ID required" },
+      { status: 400 }
+    );
+  }
+
+  const cache = getCache();
+  let products = cache.products.length
+    ? cache.products
+    : await Products.find().lean();
+
+  // find current product
+  const current = products.find((p) => p._id.toString() === id);
+
+  if (!current) {
+    return NextResponse.json({ message: "Product not found" }, { status: 404 });
+  }
+
+  const price = current.price?.current || 0;
+  const category = current.category;
+
+  // recommended: same category + price ± 30%
+  const low = price * 0.7;
+  const high = price * 1.3;
+
+  const recs = products
+    .filter(
+      (p) =>
+        p._id.toString() !== id &&
+        p.category === category &&
+        p.price?.current >= low &&
+        p.price?.current <= high
+    )
+    .slice(0, 10); // limit to 10
+
+  return NextResponse.json({ recommendations: recs }, { status: 200 });
 }
 
 // NOTE: This assumes DELETE is called with the product ID in the query, e.g., /api/products?id=12345

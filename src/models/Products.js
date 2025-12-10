@@ -60,7 +60,12 @@ const ProductSchema = new Schema(
         enum: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
       },
     ],
-
+    mainCategory: {
+      type: String,
+      required: true,
+      enum: ["clothes", "shoes", "accessories"],
+      default: "clothes",
+    },
     isNewArrival: { type: Boolean, default: false },
     isBestseller: { type: Boolean, default: false },
     featured: { type: Boolean, default: false },
