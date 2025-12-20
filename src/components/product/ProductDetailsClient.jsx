@@ -12,6 +12,7 @@ import { useCartStore } from "@/store/useCartStore";
 import CartModal from "../Layouts/CartModal";
 import ProductCard from "../Layouts/ProductCard";
 import { redirect } from "next/navigation";
+import BuyNowCheckoutModal from "../Layouts/BuyNowCheckoutModal";
 
 const PALETTE = {
   BACKGROUND: "bg-[#fff9f4]",
@@ -25,6 +26,7 @@ export default function ProductDetailsClient({ product }) {
   // ------- Image Fix -------
   const imgFront = product?.imageFront || null;
   const imgBack = product?.imageBack || null;
+  const [buyNowOpen, setBuyNowOpen] = useState(false);
 
   const gallery = useMemo(() => {
     const extra = product?.gallery?.map((g) => `/api/images/${g.fileId}`) || [];
@@ -188,17 +190,7 @@ export default function ProductDetailsClient({ product }) {
                 toast.error("Select a size first 👕");
                 return;
               }
-
-              useCartStore.getState().setBuyNowItem({
-                productId: product._id,
-                name: product.name,
-                size: selectedSize,
-                price: product.price.current,
-                image: imgFront,
-                qty: 1,
-              });
-
-              redirect("/cart?mode=buynow");
+              setBuyNowOpen(true);
             }}
             className="w-full py-3 rounded-md border border-[#654321] text-[#654321] hover:bg-[#deb88740]"
           >
@@ -216,6 +208,19 @@ export default function ProductDetailsClient({ product }) {
       </div>
 
       {cartOpen && <CartModal close={() => setCartOpen(false)} />}
+      {buyNowOpen && (
+        <BuyNowCheckoutModal
+          onClose={() => setBuyNowOpen(false)}
+          item={{
+            productId: product._id,
+            name: product.name,
+            size: selectedSize,
+            price: product.price.current,
+            image: imgFront,
+            qty: 1,
+          }}
+        />
+      )}
 
       {/* ================= Recommended ================= */}
       {recommended.length > 0 && (
