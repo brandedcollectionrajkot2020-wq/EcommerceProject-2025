@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ProductForm from "../components/ProductForm";
-import { useApiClient } from "../lib/api";
+import { useApiClient } from "../../lib/api";
 
 export default function ProductDetailPage({ params }) {
   const id = params.id;

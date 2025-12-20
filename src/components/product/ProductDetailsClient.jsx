@@ -182,6 +182,28 @@ export default function ProductDetailsClient({ product }) {
               <CheckCircle2 className="w-5 h-5" /> Go To Cart
             </button>
           )}
+          <button
+            onClick={() => {
+              if (!selectedSize) {
+                toast.error("Select a size first 👕");
+                return;
+              }
+
+              useCartStore.getState().setBuyNowItem({
+                productId: product._id,
+                name: product.name,
+                size: selectedSize,
+                price: product.price.current,
+                image: imgFront,
+                qty: 1,
+              });
+
+              redirect("/cart?mode=buynow");
+            }}
+            className="w-full py-3 rounded-md border border-[#654321] text-[#654321] hover:bg-[#deb88740]"
+          >
+            Buy Now
+          </button>
 
           {/* Description */}
           <div>

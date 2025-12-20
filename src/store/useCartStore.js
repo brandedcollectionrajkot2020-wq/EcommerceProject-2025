@@ -1,10 +1,15 @@
 "use client";
-import { redirect } from "next/navigation";
 import toast from "react-hot-toast";
 import { create } from "zustand";
 
-export const useCartStore = create((set) => ({
+export const useCartStore = create((set, get) => ({
   cart: [],
+
+  // 🔥 BUY NOW STATE
+  buyNowItem: null,
+
+  setBuyNowItem: (item) => set({ buyNowItem: item }),
+  clearBuyNowItem: () => set({ buyNowItem: null }),
 
   fetchCart: async () => {
     const res = await fetch("/api/user/cart", { credentials: "include" });
@@ -33,28 +38,25 @@ export const useCartStore = create((set) => ({
 
       const data = await res.json();
 
-      // 🔥 LOGIN NOT DONE
       if (res.status === 401) {
         toast.error("Login Required 🔐");
         window.location.href = "/auth";
         return;
       }
 
-      // 🔥 BACKEND ERROR
       if (!data.success) {
         toast.error(data.message || "Something went wrong 😵");
         return;
       }
 
-      // 🔥 SUCCESS
       toast.success(`Added to cart 🛍️ (Size: ${product.selectedSize})`);
+      await get().fetchCart();
     } catch (error) {
       toast.error("Server error 💀 Try again.");
       console.error(error);
     }
-
-    await useCartStore.getState().fetchCart();
   },
+
   updateQty: async (productId, size, qty) => {
     await fetch(`/api/user/cart?productId=${productId}&size=${size}`, {
       method: "PATCH",
@@ -63,7 +65,7 @@ export const useCartStore = create((set) => ({
       body: JSON.stringify({ qty }),
     });
 
-    await useCartStore.getState().fetchCart();
+    await get().fetchCart();
   },
 
   removeFromCart: async (productId, size) => {
@@ -72,9 +74,8 @@ export const useCartStore = create((set) => ({
       credentials: "include",
     });
 
-    await useCartStore.getState().fetchCart();
+    await get().fetchCart();
   },
-  cartCount: () => {
-    return useCartStore.getState().cart.reduce((t, item) => t + item.qty, 0);
-  },
+
+  cartCount: () => get().cart.reduce((t, item) => t + item.qty, 0),
 }));
