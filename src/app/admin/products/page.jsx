@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import Pagination from "../components/Pagination";
 import { useApiClient } from "../lib/api";
 import { useEffect, useState } from "react";
+import Table from "../components/Table";
 
 export default function ProductsPage() {
   const api = useApiClient();
