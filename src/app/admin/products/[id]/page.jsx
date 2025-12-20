@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import ProductForm from "../../components/ProductForm";
 import { useApiClient } from "../../lib/api";
+import { useRouter } from "next/navigation";
 
 export default function ProductDetailPage({ params }) {
   const id = params.id;
