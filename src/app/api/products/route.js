@@ -105,7 +105,8 @@ export async function POST(request) {
 
     // --- 3. Save to MongoDB ---
     const newProduct = await Products.create(finalProductData);
-
+    const cache = getCache();
+    cache.products.unshift(newProduct.toObject({ virtuals: true }));
     return NextResponse.json(
       {
         status: "success",
@@ -289,6 +290,10 @@ export async function DELETE(request) {
     // --- 2. Delete product from MongoDB ---
     await Products.deleteOne({ _id: productId });
 
+    const cache = getCache();
+    cache.products = cache.products.filter(
+      (p) => p._id.toString() !== productId
+    );
     // --- 3. Clean up files from GridFS (Cleanup runs *after* DB delete for reliability) ---
     if (fileIdsToClean.length > 0) {
       try {
@@ -406,7 +411,14 @@ export async function PUT(request) {
     });
 
     await product.save();
+    const cache = getCache();
+    const index = cache.products.findIndex(
+      (p) => p._id.toString() === product._id.toString()
+    );
 
+    if (index !== -1) {
+      cache.products[index] = product.toObject({ virtuals: true });
+    }
     return NextResponse.json({
       status: "success",
       product: product.toObject({ virtuals: true }),

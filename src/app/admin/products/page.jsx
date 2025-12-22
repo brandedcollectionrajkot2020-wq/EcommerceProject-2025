@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 /* --------------------------------- */
 /* --------- TABS ------------------ */
@@ -224,13 +225,14 @@ function CreateProduct({ productId, onSuccess }) {
       method: isEdit ? "PUT" : "POST",
       body: fd,
     });
+    console.log(res);
 
     if (!res.ok) {
       alert("Failed to save product");
       return;
     }
 
-    alert(isEdit ? "Product updated" : "Product created");
+    toast.success("Product Created");
     onSuccess();
   }
 
