@@ -2,17 +2,41 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    // ONLINE USER (optional)
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
+
+    // OFFLINE CUSTOMER
+    customerName: {
+      type: String,
+      trim: true,
+    },
+    customerEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+
     items: [
       {
-        product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: false, // 🔥 manual items allowed
+        },
+        productName: String, // 🔥 manual name
+        price: Number, // 🔥 override price
         qty: Number,
         size: String,
       },
     ],
-    amount: Number,
+
+    amount: { type: Number, required: true },
     paymentId: String,
-    status: { type: String, default: "pending" },
+    status: { type: String, default: "paid" },
   },
   { timestamps: true }
 );
