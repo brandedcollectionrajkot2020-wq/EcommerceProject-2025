@@ -254,6 +254,15 @@ function CreateProduct({ productId, onSuccess }) {
 
       {/* CATEGORY */}
       <div className="grid md:grid-cols-3 gap-4">
+        <Select
+          name="mainCategory"
+          label="Main Category"
+          defaultValue={product?.mainCategory}
+        >
+          <option value="clothes">Clothes</option>
+          <option value="shoes">Shoes</option>
+          <option value="accessories">Accessories</option>
+        </Select>
         <Input
           name="category"
           label="Category"
@@ -264,15 +273,6 @@ function CreateProduct({ productId, onSuccess }) {
           label="Sub Category"
           defaultValue={product?.subcategory}
         />
-        <Select
-          name="mainCategory"
-          label="Main Category"
-          defaultValue={product?.mainCategory}
-        >
-          <option value="clothes">Clothes</option>
-          <option value="shoes">Shoes</option>
-          <option value="accessories">Accessories</option>
-        </Select>
       </div>
 
       {/* PRICING */}
