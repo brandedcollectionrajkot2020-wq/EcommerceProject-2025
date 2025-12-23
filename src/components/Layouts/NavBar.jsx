@@ -413,13 +413,22 @@ const NavBar = () => {
             </div>
           </div>
 
-          <Link
-            href="/login"
-            className={`hidden sm:block ${PALETTE.TEXT_PRIMARY} ${PALETTE.HOVER_ACCENT} transition-colors`}
-            aria-label="Login/Profile"
-          >
-            <FiUser className="w-6 h-6" />
-          </Link>
+          {user ? (
+            <Link href="/profile" className="flex items-center z-40 gap-2">
+              <User className="w-5 h-5" />
+
+              <span>{user.firstName + " " + user.lastName}</span>
+            </Link>
+          ) : (
+            <Link
+              href="/auth"
+              className={`flex items-center justify-between bg-white ${PALETTE.TEXT_PRIMARY} py-2 px-3 rounded-md mb-2 font-bold hover:bg-gray-100 transition`}
+              onClick={handleLinkClick}
+            >
+              {/* <span>Log in/Register</span> */}
+              <FiLogIn className="w-5 h-5" />
+            </Link>
+          )}
 
           <button onClick={() => redirect("/whishlist")} className="relative">
             <Heart className="w-6 h-6 text-[#654321]" />
