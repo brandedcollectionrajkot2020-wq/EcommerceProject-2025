@@ -51,22 +51,57 @@ const navLinks = [
 const sidebarMegaData = {
   Clothes: [
     {
-      title: "Topwear",
-      subs: ["Oversized T-Shirts", "All T-Shirts", "Shirts", "Sajana"],
+      title: "Shirts",
+      subs: [
+        { label: "Half Sleeve", image: "/icons/half-sleeve.png" },
+        { label: "Full Sleeve", image: "/icons/full-sleeve.png" },
+        { label: "Linen", image: "/icons/linen.png" },
+        { label: "Embroidered", image: "/icons/embroidered.png" },
+        { label: "Designer", image: "/icons/designer.png" },
+        { label: "Office Wear", image: "/icons/office.png" },
+        { label: "Check", image: "/icons/check.png" },
+        { label: "Plain", image: "/icons/plain.png" },
+        { label: "Imported", image: "/icons/imported.png" },
+        { label: "Denim", image: "/icons/denim.png" },
+      ],
     },
     {
-      title: "Bottomwear",
-      subs: ["Pants", "Jeans", "Joggers", "Shorts & Boxers"],
+      title: "T-Shirts",
+      subs: [
+        { label: "Polo T-Shirts", image: "/icons/polo.png" },
+        { label: "Round Neck T-Shirts", image: "/icons/roundneck.png" },
+        { label: "Full Sleeve T-Shirts", image: "/icons/full-sleeve-tee.png" },
+        { label: "Dry Fit T-Shirts", image: "/icons/dryfit.png" },
+      ],
     },
   ],
+
+  Shoes: [
+    {
+      title: "Shoes",
+      subs: [
+        { label: "Sports Shoes", image: "/icons/sports-shoes.png" },
+        { label: "Sneakers", image: "/icons/sneakers.png" },
+      ],
+    },
+    {
+      title: "Slippers",
+      subs: [
+        { label: "Flip Flops", image: "/icons/flipflop.png" },
+        { label: "Strap Slippers", image: "/icons/strap.png" },
+      ],
+    },
+  ],
+
   Accessories: [
     {
-      title: "Accessories",
-      subs: ["Backpacks", "Perfumes", "Socks", "Caps", "Shoe Laces"],
+      title: "Perfume / Deo",
+      subs: [
+        { label: "Replica", image: "/icons/perfume.png" },
+        { label: "Indian Made", image: "/icons/indian.png" },
+        { label: "Premium Collection", image: "/icons/premium.png" },
+      ],
     },
-  ],
-  Shoes: [
-    { title: "Footwear", subs: ["Sneakers", "Sports Shoes", "Casual Shoes"] },
   ],
 };
 
@@ -196,13 +231,13 @@ const NavBar = () => {
               }}
             >
               {/* FEATURED COLLECTIONS (keeps same UI) */}
-              <h3
+              {/* <h3
                 className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} mb-2`}
               >
                 FEATURED COLLECTIONS
-              </h3>
+              </h3> */}
 
-              <div className="grid grid-cols-4 gap-2">
+              {/* <div className="grid grid-cols-4 gap-2">
                 {["SALE", "Topwear", "Bottomwear", "Sneakers"].map(
                   (title, i) => {
                     const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${title
@@ -229,7 +264,7 @@ const NavBar = () => {
                     );
                   }
                 )}
-              </div>
+              </div> */}
 
               {/* TOP CATEGORIES */}
               <h3
@@ -243,9 +278,12 @@ const NavBar = () => {
                   ?.flatMap((d) => d.subs)
                   .slice(0, 8)
                   .map((sub, i) => {
-                    const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${sub
+                    const label = typeof sub === "string" ? sub : sub.label;
+
+                    const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${label
                       .toLowerCase()
                       .replace(/ /g, "-")}`;
+
                     return (
                       <Link
                         key={i}
@@ -255,14 +293,13 @@ const NavBar = () => {
                       >
                         <div className="w-full aspect-square overflow-hidden rounded-lg border border-gray-100 mb-1">
                           <Image
-                            src={placeholderImage}
-                            alt={sub}
+                            src={sub.image || placeholderImage}
+                            alt={sub.label}
                             width={60}
                             height={60}
-                            className="object-cover"
                           />
                         </div>
-                        {sub}
+                        {sub.label}
                       </Link>
                     );
                   })}
@@ -278,18 +315,15 @@ const NavBar = () => {
                   </h4>
                   <ul className="space-y-1 text-sm text-gray-700 pl-2">
                     {cat.subs.map((s, si) => {
-                      const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${s
+                      const label = typeof s === "string" ? s : s.label;
+
+                      const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${label
                         .toLowerCase()
                         .replace(/ /g, "-")}`;
+
                       return (
                         <li key={si}>
-                          <Link
-                            href={href}
-                            onClick={handleLinkClick}
-                            className="block py-1 hover:text-[#654321]"
-                          >
-                            {s}
-                          </Link>
+                          <Link href={href}>{label}</Link>
                         </li>
                       );
                     })}
