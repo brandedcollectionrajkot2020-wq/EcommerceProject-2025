@@ -24,7 +24,6 @@ const CATEGORY_MAP = {
     "Polo T-Shirts": [],
     "Round Neck T-Shirts": ["Crew Neck", "Drop Shoulder", "Oversized"],
     "Winter Wear": ["Jackets", "Sweaters", "Sweatshirts"],
-    "Full Sleeve T-Shirts": [],
     Denim: [
       "Ankle Fit",
       'Straight Fit (14")',
@@ -55,6 +54,8 @@ const CATEGORY_MAP = {
     Watches: ["Analog", "Battery", "Automatic"],
   },
 };
+
+const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 
 /* --------------------------------- */
 /* -------- TABS -------------------- */
@@ -153,7 +154,7 @@ function ProductList({ onEdit }) {
           <div className="font-medium">{p.name}</div>
           <div>{p.category}</div>
           <div>₹{p.price?.current}</div>
-          <div>{p.stock}</div>
+          <div>{p.sizes?.reduce((sum, s) => sum + s.quantity, 0) || 0}</div>
           <div className="text-xs">
             {p.isNewArrival && "New "}
             {p.isBestseller && "Best "}
@@ -182,6 +183,10 @@ function CreateProduct({ productId, onSuccess }) {
   const [category, setCategory] = useState("");
   const [subcategory, setSubcategory] = useState("");
 
+  const [sizes, setSizes] = useState(
+    ALL_SIZES.map((s) => ({ size: s, quantity: 0 }))
+  );
+
   const [flags, setFlags] = useState({
     isNewArrival: false,
     isBestseller: false,
@@ -199,6 +204,13 @@ function CreateProduct({ productId, onSuccess }) {
         setMainCategory(p.mainCategory || "");
         setCategory(p.category || "");
         setSubcategory(p.subcategory || "");
+
+        const mergedSizes = ALL_SIZES.map((s) => {
+          const found = p.sizes?.find((x) => x.size === s);
+          return { size: s, quantity: found?.quantity || 0 };
+        });
+        setSizes(mergedSizes);
+
         setFlags({
           isNewArrival: !!p.isNewArrival,
           isBestseller: !!p.isBestseller,
@@ -212,10 +224,8 @@ function CreateProduct({ productId, onSuccess }) {
     const f = e.target;
     const fd = new FormData();
 
-    const front = f.imageFront?.files?.[0];
-    const back = f.imageBack?.files?.[0];
-    if (front) fd.append("imageFront", front);
-    if (back) fd.append("imageBack", back);
+    if (f.imageFront?.files[0]) fd.append("imageFront", f.imageFront.files[0]);
+    if (f.imageBack?.files[0]) fd.append("imageBack", f.imageBack.files[0]);
 
     if (f.galleryImages?.files?.length) {
       [...f.galleryImages.files].forEach((img) =>
@@ -234,7 +244,7 @@ function CreateProduct({ productId, onSuccess }) {
         old: Number(f.priceOld.value),
         discountText: f.discountText.value,
       },
-      stock: Number(f.stock.value),
+      sizes: sizes.filter((s) => s.quantity > 0),
       salesCount: Number(f.salesCount.value),
       description: f.description.value,
       ...flags,
@@ -263,22 +273,16 @@ function CreateProduct({ productId, onSuccess }) {
         {isEdit ? "Edit Product" : "Create Product"}
       </h2>
 
-      {/* BASIC */}
       <div className="grid md:grid-cols-2 gap-4">
         <Input name="name" label="Product Name" defaultValue={product?.name} />
         <Input name="brand" label="Brand" defaultValue={product?.brand} />
       </div>
 
-      {/* CATEGORY */}
       <div className="grid md:grid-cols-3 gap-4">
         <Select
           label="Main Category"
           value={mainCategory}
-          onChange={(e) => {
-            setMainCategory(e.target.value);
-            setCategory("");
-            setSubcategory("");
-          }}
+          onChange={(e) => setMainCategory(e.target.value)}
         >
           <option value="">Select Main Category</option>
           <option value="clothes">Clothes</option>
@@ -289,11 +293,7 @@ function CreateProduct({ productId, onSuccess }) {
         <Select
           label="Category"
           value={category}
-          disabled={!mainCategory}
-          onChange={(e) => {
-            setCategory(e.target.value);
-            setSubcategory("");
-          }}
+          onChange={(e) => setCategory(e.target.value)}
         >
           <option value="">Select Category</option>
           {mainCategory &&
@@ -307,7 +307,6 @@ function CreateProduct({ productId, onSuccess }) {
         <Select
           label="Sub Category"
           value={subcategory}
-          disabled={!category}
           onChange={(e) => setSubcategory(e.target.value)}
         >
           <option value="">Select Sub Category</option>
@@ -321,7 +320,6 @@ function CreateProduct({ productId, onSuccess }) {
         </Select>
       </div>
 
-      {/* PRICING */}
       <div className="grid md:grid-cols-3 gap-4">
         <Input
           name="priceCurrent"
@@ -342,21 +340,41 @@ function CreateProduct({ productId, onSuccess }) {
         />
       </div>
 
-      {/* STOCK */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Input
-          name="stock"
-          label="Stock Quantity"
-          type="number"
-          defaultValue={product?.stock}
-        />
-        <Input
-          name="salesCount"
-          label="Sales Count"
-          type="number"
-          defaultValue={product?.salesCount}
-        />
+      {/* SIZE STOCK */}
+      <div>
+        <label className="text-sm font-medium block mb-2">
+          Size Wise Stock
+        </label>
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+          {sizes.map((s) => (
+            <div key={s.size} className="flex items-center gap-2">
+              <span className="w-8 text-sm">{s.size}</span>
+              <input
+                type="number"
+                min="0"
+                value={s.quantity}
+                onChange={(e) =>
+                  setSizes((prev) =>
+                    prev.map((x) =>
+                      x.size === s.size
+                        ? { ...x, quantity: Number(e.target.value) }
+                        : x
+                    )
+                  )
+                }
+                className="w-full border px-2 py-1 rounded"
+              />
+            </div>
+          ))}
+        </div>
       </div>
+
+      <Input
+        name="salesCount"
+        label="Sales Count"
+        type="number"
+        defaultValue={product?.salesCount}
+      />
 
       <Textarea
         name="description"
@@ -364,7 +382,6 @@ function CreateProduct({ productId, onSuccess }) {
         defaultValue={product?.description}
       />
 
-      {/* IMAGES */}
       <div className="grid md:grid-cols-2 gap-4">
         <FileInput name="imageFront" label="Front Image" />
         <FileInput name="imageBack" label="Back Image" />
@@ -372,7 +389,6 @@ function CreateProduct({ productId, onSuccess }) {
 
       <FileInput name="galleryImages" label="Gallery Images" multiple />
 
-      {/* FLAGS */}
       <div className="flex gap-6 text-sm">
         <Checkbox
           label="New Arrival"
@@ -439,47 +455,78 @@ function Select({ label, children, ...props }) {
   );
 }
 
-function FileInput({ label, multiple = false, ...props }) {
+function FileInput({ label, multiple = false, name, ...props }) {
   const [previews, setPreviews] = useState([]);
+
+  // unique id per component instance
+  const inputId = `file-${name}`;
 
   function handleChange(e) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    const urls = files.map((file) => ({
+    const newPreviews = files.map((file) => ({
       file,
       url: URL.createObjectURL(file),
     }));
 
-    setPreviews(urls);
+    setPreviews((prev) => (multiple ? [...prev, ...newPreviews] : newPreviews));
   }
 
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-[#4a2e1f]">{label}</label>
+  // cleanup object URLs
+  useEffect(() => {
+    return () => {
+      previews.forEach((p) => URL.revokeObjectURL(p.url));
+    };
+  }, [previews]);
 
-      {/* Upload Box */}
-      <label className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-dashed border-[#ead7c5] rounded-lg cursor-pointer hover:bg-[#fdf7f2] transition">
-        <span className="text-sm text-gray-600">
-          Click to upload {multiple ? "images" : "image"}
-        </span>
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-medium text-gray-700">{label}</label>
+
+      <label
+        htmlFor={inputId}
+        className="flex flex-col items-center justify-center w-full h-32 border-2 border-[#ead7c5] border-dashed rounded-lg cursor-pointer bg-[#fcf9f6] hover:bg-[#f5eee6] transition"
+      >
+        <svg
+          className="w-8 h-8 mb-2 text-[#d4b99a]"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M12 4v16m8-8H4"
+          />
+        </svg>
+        <p className="text-sm text-gray-600">
+          <span className="font-semibold">Click to upload</span>
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          {multiple ? "Multiple images allowed" : "Single image"}
+        </p>
 
         <input
+          id={inputId}
           type="file"
-          {...props}
+          name={name}
           multiple={multiple}
-          onChange={handleChange}
+          accept="image/*"
           className="hidden"
+          onChange={handleChange}
+          {...props}
         />
       </label>
 
-      {/* PREVIEW */}
+      {/* PREVIEW GRID */}
       {previews.length > 0 && (
-        <div className="flex gap-3 flex-wrap mt-2">
+        <div className="flex flex-wrap gap-3 mt-3">
           {previews.map((p, i) => (
             <div
               key={i}
-              className="relative w-24 h-24 border rounded-lg overflow-hidden"
+              className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#ead7c5]"
             >
               <img
                 src={p.url}

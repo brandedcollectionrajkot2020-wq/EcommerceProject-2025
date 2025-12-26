@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import slugify from "slugify"; // <— ADD THIS (npm i slugify)
+import slugify from "slugify";
 
 const { Schema } = mongoose;
 
-/** ---------- Price Schema ---------- */
+/** ---------- PRICE ---------- */
 const PriceSchema = new Schema(
   {
     current: { type: Number, required: true },
@@ -13,6 +13,7 @@ const PriceSchema = new Schema(
   { _id: false }
 );
 
+/** ---------- SPECIFICATIONS ---------- */
 const SpecificationSchema = new Schema(
   {
     key: { type: String, required: true, trim: true },
@@ -21,6 +22,7 @@ const SpecificationSchema = new Schema(
   { _id: false }
 );
 
+/** ---------- GALLERY ---------- */
 const GalleryImageSchema = new Schema(
   {
     fileId: { type: Schema.Types.ObjectId, required: true },
@@ -29,11 +31,29 @@ const GalleryImageSchema = new Schema(
   { _id: false }
 );
 
-/** ---------- MAIN PRODUCT SCHEMA ---------- */
+/** ---------- SIZE + STOCK ---------- */
+const SizeStockSchema = new Schema(
+  {
+    size: {
+      type: String,
+      required: true,
+      enum: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+  },
+  { _id: false }
+);
+
+/** ---------- MAIN PRODUCT ---------- */
 const ProductSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
-    slug: { type: String, unique: true, index: true }, // 🔥 Slug added
+    slug: { type: String, unique: true, index: true },
 
     brand: { type: String, default: "Branded Collection" },
     category: { type: String, required: true, trim: true },
@@ -54,24 +74,25 @@ const ProductSchema = new Schema(
     gallery: [GalleryImageSchema],
 
     tags: [{ type: String }],
-    availableSizes: [
-      {
-        type: String,
-        enum: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
-      },
-    ],
+
+    /** 🔥 SIZE-WISE STOCK */
+    sizes: {
+      type: [SizeStockSchema],
+      default: [],
+    },
+
     mainCategory: {
       type: String,
-      required: true,
       enum: ["clothes", "shoes", "accessories"],
       default: "clothes",
+      required: true,
     },
+
     isNewArrival: { type: Boolean, default: false },
     isBestseller: { type: Boolean, default: false },
     featured: { type: Boolean, default: false },
 
     salesCount: { type: Number, default: 0 },
-    stock: { type: Number, default: 100 },
   },
   {
     timestamps: true,
@@ -80,10 +101,7 @@ const ProductSchema = new Schema(
   }
 );
 
-/** ----------------------------------
-🔥 VIRTUAL IMAGE URLs
----------------------------------- **/
-
+/** ---------- IMAGE VIRTUALS ---------- */
 ProductSchema.virtual("imageFront").get(function () {
   return this.imageFrontFileId ? `/api/images/${this.imageFrontFileId}` : null;
 });
@@ -99,9 +117,16 @@ ProductSchema.virtual("galleryUrls").get(function () {
   }));
 });
 
-/** ----------------------------------
-⭐ TEXT SEARCH INDEX
----------------------------------- **/
+/** ---------- SIZE HELPERS ---------- */
+ProductSchema.virtual("availableSizes").get(function () {
+  return this.sizes?.filter((s) => s.quantity > 0).map((s) => s.size);
+});
+
+ProductSchema.virtual("totalStock").get(function () {
+  return this.sizes?.reduce((sum, s) => sum + s.quantity, 0) || 0;
+});
+
+/** ---------- SEARCH INDEX ---------- */
 ProductSchema.index(
   {
     name: "text",
@@ -114,40 +139,22 @@ ProductSchema.index(
     "specifications.key": "text",
     "specifications.value": "text",
   },
-  {
-    name: "ProductTextIndex",
-    weights: {
-      name: 10,
-      brand: 8,
-      category: 7,
-      material: 6,
-      tags: 5,
-      description: 4,
-      "specifications.value": 3,
-    },
-  }
+  { name: "ProductTextIndex" }
 );
 
-/** ----------------------------------
-🔥 PRE-SAVE HOOK WITH SLUG BUILDER
----------------------------------- **/
+/** ---------- SLUG ---------- */
 ProductSchema.pre("save", async function () {
   if (!this.isModified("name")) return;
 
-  const baseSlug = slugify(this.name, {
-    lower: true,
-    strict: true, // remove symbols
-  });
+  const baseSlug = slugify(this.name, { lower: true, strict: true });
+  let slug = baseSlug;
+  let i = 1;
 
-  let newSlug = baseSlug;
-  let counter = 1;
-
-  // ensure unique slug
-  while (await mongoose.models.Product.findOne({ slug: newSlug })) {
-    newSlug = `${baseSlug}-${counter++}`;
+  while (await mongoose.models.Product.findOne({ slug })) {
+    slug = `${baseSlug}-${i++}`;
   }
 
-  this.slug = newSlug;
+  this.slug = slug;
 });
 
 export default mongoose.models.Product ||
