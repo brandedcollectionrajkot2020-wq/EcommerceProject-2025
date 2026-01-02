@@ -32,6 +32,10 @@ async function uploadToBlob(file) {
 
   return result; // returns { id: ObjectId, filename: string }
 }
+function normalizeSlugToLabel(slug) {
+  if (!slug) return "";
+  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 /* ---------------- POST ---------------- */
 export async function POST(req) {
@@ -93,11 +97,27 @@ export async function GET(req) {
   }
 
   const { searchParams } = new URL(req.url);
+
+  const mainCategory = searchParams.get("mainCategory");
+  const categorySlug = searchParams.get("category");
+  const subcategorySlug = searchParams.get("subcategory");
   const size = searchParams.get("size");
-  const page = Number(searchParams.get("page")) || 1;
-  const limit = 10;
 
   let result = [...cache.products];
+
+  if (mainCategory) {
+    result = result.filter((p) => p.mainCategory === mainCategory);
+  }
+
+  if (categorySlug) {
+    const categoryLabel = normalizeSlugToLabel(categorySlug);
+    result = result.filter((p) => p.category === categoryLabel);
+  }
+
+  if (subcategorySlug) {
+    const subLabel = normalizeSlugToLabel(subcategorySlug);
+    result = result.filter((p) => p.subcategory === subLabel);
+  }
 
   if (size) {
     result = result.filter((p) =>
@@ -105,11 +125,9 @@ export async function GET(req) {
     );
   }
 
-  const paginated = result.slice((page - 1) * limit, page * limit);
-
   return NextResponse.json({
-    products: paginated,
-    hasMore: page * limit < result.length,
+    products: result,
+    hasMore: false,
   });
 }
 

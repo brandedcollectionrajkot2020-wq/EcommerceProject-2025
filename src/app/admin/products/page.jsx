@@ -55,7 +55,11 @@ const CATEGORY_MAP = {
   },
 };
 
-const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+const SIZE_MAP = {
+  clothes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  shoes: ["6", "7", "8", "9", "10", "11", "12"],
+  accessories: ["General"],
+};
 
 /* --------------------------------- */
 /* -------- TABS -------------------- */
@@ -182,10 +186,7 @@ function CreateProduct({ productId, onSuccess }) {
   const [mainCategory, setMainCategory] = useState("");
   const [category, setCategory] = useState("");
   const [subcategory, setSubcategory] = useState("");
-
-  const [sizes, setSizes] = useState(
-    ALL_SIZES.map((s) => ({ size: s, quantity: 0 }))
-  );
+  const [sizes, setSizes] = useState([]);
 
   const [flags, setFlags] = useState({
     isNewArrival: false,
@@ -205,11 +206,13 @@ function CreateProduct({ productId, onSuccess }) {
         setCategory(p.category || "");
         setSubcategory(p.subcategory || "");
 
-        const mergedSizes = ALL_SIZES.map((s) => {
-          const found = p.sizes?.find((x) => x.size === s);
-          return { size: s, quantity: found?.quantity || 0 };
-        });
-        setSizes(mergedSizes);
+        const allowedSizes = SIZE_MAP[p.mainCategory] || [];
+        setSizes(
+          allowedSizes.map((s) => ({
+            size: s,
+            quantity: p.sizes?.find((x) => x.size === s)?.quantity || 0,
+          }))
+        );
 
         setFlags({
           isNewArrival: !!p.isNewArrival,
@@ -218,6 +221,14 @@ function CreateProduct({ productId, onSuccess }) {
         });
       });
   }, [productId]);
+
+  useEffect(() => {
+    if (!mainCategory) {
+      setSizes([]);
+      return;
+    }
+    setSizes(SIZE_MAP[mainCategory].map((s) => ({ size: s, quantity: 0 })));
+  }, [mainCategory]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -258,7 +269,7 @@ function CreateProduct({ productId, onSuccess }) {
       body: fd,
     });
 
-    if (!res.ok) return alert("Failed to save product");
+    if (!res.ok) return toast.error("Failed to save product");
 
     toast.success(isEdit ? "Product Updated" : "Product Created");
     onSuccess();
@@ -269,33 +280,41 @@ function CreateProduct({ productId, onSuccess }) {
       onSubmit={handleSubmit}
       className="bg-white border rounded-xl p-6 space-y-6"
     >
-      <h2 className="text-lg font-semibold">
-        {isEdit ? "Edit Product" : "Create Product"}
-      </h2>
+      <p className="text-xs text-gray-500">
+        <span className="text-red-500">*</span> Required fields
+      </p>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Input name="name" label="Product Name" defaultValue={product?.name} />
-        <Input name="brand" label="Brand" defaultValue={product?.brand} />
+        <Input
+          name="name"
+          label={<FieldLabel required>Product Name</FieldLabel>}
+          defaultValue={product?.name}
+        />
+        <Input
+          name="brand"
+          label={<FieldLabel optional>Brand</FieldLabel>}
+          defaultValue={product?.brand}
+        />
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
         <Select
-          label="Main Category"
+          label={<FieldLabel required>Main Category</FieldLabel>}
           value={mainCategory}
           onChange={(e) => setMainCategory(e.target.value)}
         >
-          <option value="">Select Main Category</option>
+          <option value="">Select</option>
           <option value="clothes">Clothes</option>
           <option value="shoes">Shoes</option>
           <option value="accessories">Accessories</option>
         </Select>
 
         <Select
-          label="Category"
+          label={<FieldLabel required>Category</FieldLabel>}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
         >
-          <option value="">Select Category</option>
+          <option value="">Select</option>
           {mainCategory &&
             Object.keys(CATEGORY_MAP[mainCategory]).map((c) => (
               <option key={c} value={c}>
@@ -305,11 +324,11 @@ function CreateProduct({ productId, onSuccess }) {
         </Select>
 
         <Select
-          label="Sub Category"
+          label={<FieldLabel optional>Sub Category</FieldLabel>}
           value={subcategory}
           onChange={(e) => setSubcategory(e.target.value)}
         >
-          <option value="">Select Sub Category</option>
+          <option value="">Optional</option>
           {mainCategory &&
             category &&
             CATEGORY_MAP[mainCategory][category]?.map((s) => (
@@ -323,71 +342,83 @@ function CreateProduct({ productId, onSuccess }) {
       <div className="grid md:grid-cols-3 gap-4">
         <Input
           name="priceCurrent"
-          label="Current Price"
+          label={<FieldLabel required>Current Price</FieldLabel>}
           type="number"
           defaultValue={product?.price?.current}
         />
         <Input
           name="priceOld"
-          label="Old Price"
+          label={<FieldLabel optional>Old Price</FieldLabel>}
           type="number"
           defaultValue={product?.price?.old}
         />
         <Input
           name="discountText"
-          label="Discount Text"
+          label={<FieldLabel optional>Discount Text</FieldLabel>}
           defaultValue={product?.price?.discountText}
         />
       </div>
 
-      {/* SIZE STOCK */}
-      <div>
-        <label className="text-sm font-medium block mb-2">
-          Size Wise Stock
-        </label>
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-          {sizes.map((s) => (
-            <div key={s.size} className="flex items-center gap-2">
-              <span className="w-8 text-sm">{s.size}</span>
-              <input
-                type="number"
-                min="0"
-                value={s.quantity}
-                onChange={(e) =>
-                  setSizes((prev) =>
-                    prev.map((x) =>
-                      x.size === s.size
-                        ? { ...x, quantity: Number(e.target.value) }
-                        : x
+      {sizes.length > 0 && (
+        <div>
+          <label className="text-sm font-medium block mb-2">
+            <FieldLabel required>Size Wise Stock</FieldLabel>
+          </label>
+
+          <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+            {sizes.map((s) => (
+              <div key={s.size} className="flex items-center gap-2">
+                <span className="w-8 text-sm">{s.size}</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={s.quantity}
+                  onChange={(e) =>
+                    setSizes((prev) =>
+                      prev.map((x) =>
+                        x.size === s.size
+                          ? { ...x, quantity: Number(e.target.value) }
+                          : x
+                      )
                     )
-                  )
-                }
-                className="w-full border px-2 py-1 rounded"
-              />
-            </div>
-          ))}
+                  }
+                  className="w-full border px-2 py-1 rounded"
+                />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <Input
         name="salesCount"
-        label="Sales Count"
+        label={<FieldLabel optional>Sales Count</FieldLabel>}
         type="number"
         defaultValue={product?.salesCount}
       />
 
       <Textarea
         name="description"
-        label="Description"
+        label={<FieldLabel optional>Description</FieldLabel>}
         defaultValue={product?.description}
       />
 
       <div className="grid md:grid-cols-2 gap-4">
-        <FileInput name="imageFront" label="Front Image" />
-        <FileInput name="imageBack" label="Back Image" />
+        <FileInput
+          name="imageFront"
+          label={<FieldLabel required>Front Image</FieldLabel>}
+        />
+        <FileInput
+          name="imageBack"
+          label={<FieldLabel optional>Back Image</FieldLabel>}
+        />
       </div>
 
-      <FileInput name="galleryImages" label="Gallery Images" multiple />
+      <FileInput
+        name="galleryImages"
+        label={<FieldLabel optional>Gallery Images</FieldLabel>}
+        multiple
+      />
 
       <div className="flex gap-6 text-sm">
         <Checkbox
@@ -422,6 +453,16 @@ function CreateProduct({ productId, onSuccess }) {
 /* -------- UI HELPERS -------------- */
 /* --------------------------------- */
 
+function FieldLabel({ children, required = false, optional = false }) {
+  return (
+    <span className="flex items-center gap-1">
+      {children}
+      {required && <span className="text-red-500">*</span>}
+      {optional && <span className="text-xs text-gray-400">(Optional)</span>}
+    </span>
+  );
+}
+
 function Input({ label, ...props }) {
   return (
     <div>
@@ -455,88 +496,11 @@ function Select({ label, children, ...props }) {
   );
 }
 
-function FileInput({ label, multiple = false, name, ...props }) {
-  const [previews, setPreviews] = useState([]);
-
-  // unique id per component instance
-  const inputId = `file-${name}`;
-
-  function handleChange(e) {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    const newPreviews = files.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
-
-    setPreviews((prev) => (multiple ? [...prev, ...newPreviews] : newPreviews));
-  }
-
-  // cleanup object URLs
-  useEffect(() => {
-    return () => {
-      previews.forEach((p) => URL.revokeObjectURL(p.url));
-    };
-  }, [previews]);
-
+function FileInput({ label, ...props }) {
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
-
-      <label
-        htmlFor={inputId}
-        className="flex flex-col items-center justify-center w-full h-32 border-2 border-[#ead7c5] border-dashed rounded-lg cursor-pointer bg-[#fcf9f6] hover:bg-[#f5eee6] transition"
-      >
-        <svg
-          className="w-8 h-8 mb-2 text-[#d4b99a]"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-        <p className="text-sm text-gray-600">
-          <span className="font-semibold">Click to upload</span>
-        </p>
-        <p className="text-xs text-gray-400 mt-1">
-          {multiple ? "Multiple images allowed" : "Single image"}
-        </p>
-
-        <input
-          id={inputId}
-          type="file"
-          name={name}
-          multiple={multiple}
-          accept="image/*"
-          className="hidden"
-          onChange={handleChange}
-          {...props}
-        />
-      </label>
-
-      {/* PREVIEW GRID */}
-      {previews.length > 0 && (
-        <div className="flex flex-wrap gap-3 mt-3">
-          {previews.map((p, i) => (
-            <div
-              key={i}
-              className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#ead7c5]"
-            >
-              <img
-                src={p.url}
-                alt="preview"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))}
-        </div>
-      )}
+    <div>
+      <label className="text-sm">{label}</label>
+      <input type="file" {...props} />
     </div>
   );
 }

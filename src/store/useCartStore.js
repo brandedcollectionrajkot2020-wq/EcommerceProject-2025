@@ -21,7 +21,6 @@ export const useCartStore = create((set, get) => ({
     if (product?.size) product.selectedSize = product.size;
 
     if (!product?._id || !product?.selectedSize) {
-      toast.error("Select a size first! 😒");
       return;
     }
 

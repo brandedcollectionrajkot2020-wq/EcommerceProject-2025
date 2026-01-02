@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 
 const PALETTE = {
@@ -10,41 +10,80 @@ const PALETTE = {
   TEXT: "text-[#654321]",
 };
 
-export default function SelectSizeModal({ sizes, onSelect, close }) {
+const SIZE_MAP = {
+  clothes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  shoes: ["6", "7", "8", "9", "10", "11", "18"],
+  accessories: [],
+};
+
+export default function SelectSizeModal({
+  mainCategory,
+  sizes,
+  onSelect,
+  close,
+}) {
   const [selected, setSelected] = useState(null);
 
-  // ESC key to close
+  /* --------------------------------- */
+  /* Resolve sizes (ALWAYS runs)        */
+  /* --------------------------------- */
+
+  const finalSizes = useMemo(() => {
+    // Accessories → no sizes
+    if (mainCategory === "accessories") return [];
+
+    // If API sizes exist → trust API
+    if (Array.isArray(sizes) && sizes.length > 0) {
+      return sizes.filter((s) => s.quantity > 0).map((s) => String(s.size));
+    }
+
+    // Fallback
+    return SIZE_MAP[mainCategory] || [];
+  }, [mainCategory, sizes]);
+
+  /* --------------------------------- */
+  /* ESC listener (ALWAYS runs)         */
+  /* --------------------------------- */
+
   useEffect(() => {
     const handler = (e) => e.key === "Escape" && close();
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [close]);
+
+  /* --------------------------------- */
+  /* CONDITIONAL RENDER ONLY (SAFE)     */
+  /* --------------------------------- */
+
+  if (finalSizes.length === 0) {
+    return null; // ✅ SAFE now (after hooks)
+  }
 
   return (
     <>
-      {/* Full Screen Backdrop */}
+      {/* Backdrop */}
       <div
         onClick={close}
         className="fixed inset-0 bg-black/40 backdrop-blur-[3px] z-[100]"
-      ></div>
+      />
 
-      {/* REAL CENTER MODAL */}
+      {/* Modal */}
       <div
         className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
         ${PALETTE.BG} w-[90%] max-w-[340px] p-6 rounded-xl border shadow-2xl 
-        z-[101] scale-100 animate-fadeIn`}
+        z-[101] animate-pop`}
       >
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h2 className={`font-bold text-lg ${PALETTE.TEXT}`}>Select Size</h2>
           <button onClick={close} className="hover:rotate-90 transition">
-            <X className={`${PALETTE.TEXT}`} />
+            <X className={PALETTE.TEXT} />
           </button>
         </div>
 
-        {/* Size Buttons */}
+        {/* Sizes */}
         <div className="flex gap-3 flex-wrap mb-6">
-          {sizes.map((s) => (
+          {finalSizes.map((s) => (
             <button
               key={s}
               onClick={() => setSelected(s)}
@@ -54,12 +93,12 @@ export default function SelectSizeModal({ sizes, onSelect, close }) {
                   : `${PALETTE.BORDER} ${PALETTE.TEXT} hover:bg-[#f3e3d2]`
               }`}
             >
-              {s}
+              {mainCategory === "shoes" ? ` ${s}` : s}
             </button>
           ))}
         </div>
 
-        {/* Confirm Button */}
+        {/* Confirm */}
         <button
           onClick={() => selected && onSelect(selected)}
           disabled={!selected}
@@ -75,7 +114,7 @@ export default function SelectSizeModal({ sizes, onSelect, close }) {
 
       {/* Animation */}
       <style jsx>{`
-        .animate-fadeIn {
+        .animate-pop {
           animation: pop 0.25s ease-out;
         }
         @keyframes pop {

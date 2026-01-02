@@ -134,6 +134,9 @@ const NavBar = () => {
     fetchCart();
   }, [getUser, fetchCart]);
   console.log(user);
+  function toSlug(label) {
+    return label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  }
 
   // compute available height for mega menu body
   const computeMegaMaxHeight = (menuOpenName) => {
@@ -280,9 +283,9 @@ const NavBar = () => {
                   .map((sub, i) => {
                     const label = typeof sub === "string" ? sub : sub.label;
 
-                    const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${label
-                      .toLowerCase()
-                      .replace(/ /g, "-")}`;
+                    const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${encodeURIComponent(
+                      label
+                    )}`;
 
                     return (
                       <Link
@@ -317,9 +320,9 @@ const NavBar = () => {
                     {cat.subs.map((s, si) => {
                       const label = typeof s === "string" ? s : s.label;
 
-                      const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${label
-                        .toLowerCase()
-                        .replace(/ /g, "-")}`;
+                      const href = `/products?mainCategory=${link.name.toLowerCase()}&category=${encodeURIComponent(
+                        cat.title
+                      )}&subcategory=${encodeURIComponent(label)}`;
 
                       return (
                         <li key={si}>

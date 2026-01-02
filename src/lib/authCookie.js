@@ -1,4 +1,3 @@
-"use strict";
 import { cookies } from "next/headers";
 
 export const tokenData = async () => {

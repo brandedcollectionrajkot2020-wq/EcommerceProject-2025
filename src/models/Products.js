@@ -37,7 +37,6 @@ const SizeStockSchema = new Schema(
     size: {
       type: String,
       required: true,
-      enum: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
     },
     quantity: {
       type: Number,
@@ -145,7 +144,9 @@ ProductSchema.index(
 /** ---------- SLUG ---------- */
 ProductSchema.pre("save", async function () {
   if (!this.isModified("name")) return;
-
+  if (this.mainCategory === "accessories") {
+    this.sizes = [];
+  }
   const baseSlug = slugify(this.name, { lower: true, strict: true });
   let slug = baseSlug;
   let i = 1;
