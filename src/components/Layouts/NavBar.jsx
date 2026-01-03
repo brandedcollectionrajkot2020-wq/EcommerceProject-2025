@@ -137,6 +137,7 @@ const NavBar = () => {
   function toSlug(label) {
     return label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   }
+  console.log(user);
 
   // compute available height for mega menu body
   const computeMegaMaxHeight = (menuOpenName) => {
