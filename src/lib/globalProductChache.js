@@ -1,6 +1,7 @@
 let cache = {
   products: [],
   lastSync: null,
+  dirty: true,
 };
 
 export const getCache = () => cache;
@@ -8,6 +9,7 @@ export const getCache = () => cache;
 export const setCache = (data) => {
   cache.products = data;
   cache.lastSync = Date.now();
+  cache.dirty = false;
 };
 
 export const updateCacheItem = (item) => {
