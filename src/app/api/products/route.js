@@ -167,8 +167,9 @@ export async function DELETE(req) {
   const id = searchParams.get("id");
 
   const product = await Products.findById(id);
-  if (!product)
+  if (!product) {
     return NextResponse.json({ message: "Not found" }, { status: 404 });
+  }
 
   const fileIds = [
     product.imageFrontFileId,
@@ -177,11 +178,14 @@ export async function DELETE(req) {
   ].filter(Boolean);
 
   await Products.deleteOne({ _id: id });
+  await Promise.all(fileIds.map((fid) => deleteFromGridFs(fid.toString())));
 
-  await Promise.all(fileIds.map((id) => deleteFromGridFs(id.toString())));
-
+  // ✅ CACHE UPDATE (same style as POST & PUT)
   const cache = getCache();
-  cache.products = cache.products.filter((p) => p._id.toString() !== id);
+  const index = cache.products.findIndex((p) => p._id.toString() === id);
+  if (index !== -1) {
+    cache.products.splice(index, 1);
+  }
 
   return NextResponse.json({ success: true });
 }
