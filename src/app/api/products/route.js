@@ -96,10 +96,8 @@ export async function GET(req) {
   await connectDb();
   const cache = getCache();
 
-  if (!cache.products.length) {
-    const db = await Products.find().lean({ virtuals: true });
-    setCache(db);
-  }
+  const db = await Products.find().lean({ virtuals: true });
+  setCache(db);
 
   const { searchParams } = new URL(req.url);
 
