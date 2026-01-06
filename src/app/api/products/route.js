@@ -94,10 +94,14 @@ export async function POST(req) {
 /* ---------------- GET ---------------- */
 export async function GET(req) {
   await connectDb();
+
   const cache = getCache();
 
-  const db = await Products.find().lean({ virtuals: true });
-  setCache(db);
+  // ✅ Only hit DB if cache is empty
+  if (!cache.products.length) {
+    const db = await Products.find().lean({ virtuals: true });
+    setCache(db);
+  }
 
   const { searchParams } = new URL(req.url);
 
@@ -106,10 +110,12 @@ export async function GET(req) {
   const subcategorySlug = searchParams.get("subcategory");
   const size = searchParams.get("size");
   const featured = searchParams.get("featured");
-  const minPrice = Number(searchParams.get("minPrice"));
-  const maxPrice = Number(searchParams.get("maxPrice"));
+  const minPrice = searchParams.get("minPrice");
+  const maxPrice = searchParams.get("maxPrice");
 
-  let result = [...cache.products];
+  let result = [...getCache().products];
+
+  /* ---------- CATEGORY FILTERS ---------- */
 
   if (mainCategory) {
     result = result.filter((p) => p.mainCategory === mainCategory);
@@ -125,24 +131,36 @@ export async function GET(req) {
     result = result.filter((p) => p.subcategory === subLabel);
   }
 
+  /* ---------- SIZE FILTER ---------- */
+
   if (size) {
     result = result.filter((p) =>
       p.sizes?.some((s) => s.size === size && s.quantity > 0)
     );
   }
+
+  /* ---------- FEATURED FILTER ---------- */
+
   if (featured === "true") {
     result = result.filter((p) => p.featured === true);
   }
-  if (!isNaN(minPrice) || !isNaN(maxPrice)) {
-    result = result.filter((p) => {
-      const price = p.price?.current ?? 0;
 
-      if (!isNaN(minPrice) && price < minPrice) return false;
-      if (!isNaN(maxPrice) && price > maxPrice) return false;
+  /* ---------- PRICE FILTER (FIXED) ---------- */
 
-      return true;
-    });
-  }
+  const min = minPrice !== null ? Number(minPrice) : null;
+  const max = maxPrice !== null ? Number(maxPrice) : null;
+
+  result = result.filter((p) => {
+    const price = Number(p?.price?.current);
+
+    // 🚫 skip products with invalid price
+    if (Number.isNaN(price)) return false;
+
+    if (min !== null && !Number.isNaN(min) && price < min) return false;
+    if (max !== null && !Number.isNaN(max) && price > max) return false;
+
+    return true;
+  });
 
   return NextResponse.json({
     products: result,
