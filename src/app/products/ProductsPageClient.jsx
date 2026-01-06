@@ -8,10 +8,57 @@ import toast from "react-hot-toast";
 import HeroSection from "@/components/products/HeroSection";
 
 /* --------------------------------- */
-/* -------- FILTER DATA ------------- */
+/* -------- CATEGORY MAP ------------ */
 /* --------------------------------- */
 
-const CATEGORY_OPTIONS = ["Oversized", "Shirts", "Hoodies", "Joggers"];
+const CATEGORY_MAP = {
+  clothes: {
+    Shirts: [
+      "Half Sleeve",
+      "Full Sleeve",
+      "Linen",
+      "Embroidered",
+      "Designer",
+      "Office Wear",
+      "Check",
+      "Plain",
+      "Imported",
+      "Denim",
+    ],
+    "Polo T-Shirts": [],
+    "Round Neck T-Shirts": ["Crew Neck", "Drop Shoulder", "Oversized"],
+    "Winter Wear": ["Jackets", "Sweaters", "Sweatshirts"],
+    Denim: [
+      "Ankle Fit",
+      'Straight Fit (14")',
+      "Comfort Narrow",
+      'Regular Fit (16", 18")',
+      "Baggy Fit",
+    ],
+    "Cotton / Chinos": ["Ankle Fit", "Comfort Fit"],
+    "Formal Pants": ["Ankle Fit", "Straight Fit", "Comfort Fit"],
+    "Track Pants": [
+      "Dry Fit Fabric",
+      "Cotton Fleece Fabric",
+      "Ankle Fit",
+      "Straight Fit",
+    ],
+    "Dry Fit T-Shirts": ["Round Neck", "Collar Free"],
+  },
+
+  shoes: {
+    Shoes: ["Sports Shoes", "Sneakers"],
+    Slippers: ["Flip Flops", "Strap Slippers"],
+    Crocs: ["Men", "Women"],
+  },
+
+  accessories: {
+    "Perfume / Deo": ["Replica", "Indian Made", "Premium Collection"],
+    Deodorants: ["Gas Deo", "Water Deo"],
+    Watches: ["Analog", "Battery", "Automatic"],
+  },
+};
+
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 const PAGE_SIZE = 12;
 
@@ -22,31 +69,66 @@ const PAGE_SIZE = 12;
 export default function ProductsPageClient() {
   const searchParams = useSearchParams();
 
-  const urlMainCategory = searchParams.get("mainCategory") || "";
-  const urlCategory = searchParams.get("category") || "";
-  const urlSubcategory = searchParams.get("subcategory") || "";
-  const urlSize = searchParams.get("size") || "";
+  /* ---------- NORMALIZE URL PARAMS ---------- */
+
+  const rawMainCategory = searchParams.get("mainCategory") || "";
+
+  const urlMainCategory = ["clothes", "shoes", "accessories"].includes(
+    rawMainCategory.toLowerCase().trim()
+  )
+    ? rawMainCategory.toLowerCase().trim()
+    : "";
+
   const urlSearch = searchParams.get("search") || "";
+  const urlSize = searchParams.get("size") || "";
+
+  /* ---------- STATE ---------- */
 
   const [allProducts, setAllProducts] = useState([]);
   const [products, setProducts] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [hasMore, setHasMore] = useState(true);
 
   const [filters, setFilters] = useState({
     search: urlSearch,
     mainCategory: urlMainCategory,
-    category: urlCategory ? [urlCategory] : [],
-    subcategory: urlSubcategory,
+    category: [],
+    subcategory: "",
     size: urlSize,
     brand: "",
     discountOnly: false,
     price: [0, 5000],
   });
 
-  /* ---------------- LOAD PRODUCTS ---------------- */
+  /* --------------------------------- */
+  /* 🔥 SYNC URL → STATE (CRITICAL FIX) */
+  /* --------------------------------- */
+
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      mainCategory: urlMainCategory,
+      category: [],
+      subcategory: "",
+      size: "",
+    }));
+  }, [urlMainCategory]);
+
+  /* --------------------------------- */
+  /* -------- DERIVED FILTER DATA ---- */
+  /* --------------------------------- */
+
+  const mainCategoryMap = CATEGORY_MAP[filters.mainCategory] || {};
+
+  const allCategories = Object.keys(mainCategoryMap);
+
+  const allSubcategories = Array.from(
+    new Set(Object.values(mainCategoryMap).flat().filter(Boolean))
+  );
+
+  /* --------------------------------- */
+  /* -------- LOAD PRODUCTS ---------- */
+  /* --------------------------------- */
 
   useEffect(() => {
     async function loadProducts() {
@@ -54,11 +136,11 @@ export default function ProductsPageClient() {
         let url = `/api/products?limit=999&mainCategory=${filters.mainCategory}&minPrice=${filters.price[0]}&maxPrice=${filters.price[1]}`;
 
         if (filters.category.length) url += `&category=${filters.category[0]}`;
-
+        if (filters.subcategory) url += `&subcategory=${filters.subcategory}`;
         if (filters.size) url += `&size=${filters.size}`;
         if (filters.search) url += `&search=${filters.search}`;
 
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: "no-store" });
         const data = await res.json();
 
         if (!data.products) {
@@ -73,13 +155,6 @@ export default function ProductsPageClient() {
           filtered = filtered.filter((p) => p.brand === filters.brand);
         }
 
-        /* SUBCATEGORY FILTER */
-        if (filters.subcategory) {
-          filtered = filtered.filter(
-            (p) => p.subcategory === filters.subcategory
-          );
-        }
-
         /* DISCOUNT FILTER */
         if (filters.discountOnly) {
           filtered = filtered.filter(
@@ -90,22 +165,6 @@ export default function ProductsPageClient() {
         setAllProducts(filtered);
         setProducts(filtered.slice(0, PAGE_SIZE));
         setHasMore(filtered.length > PAGE_SIZE);
-
-        /* UNIQUE BRANDS */
-        const uniqueBrands = [
-          ...new Set(data.products.map((p) => p.brand).filter(Boolean)),
-        ];
-        setBrands(uniqueBrands);
-
-        /* SUBCATEGORIES */
-        if (filters.category.length) {
-          const uniqueSubs = [
-            ...new Set(data.products.map((p) => p.subcategory).filter(Boolean)),
-          ];
-          setSubcategories(uniqueSubs);
-        } else {
-          setSubcategories([]);
-        }
       } catch (err) {
         console.error(err);
         toast.error("Error loading products");
@@ -113,43 +172,35 @@ export default function ProductsPageClient() {
     }
 
     loadProducts();
-  }, [
-    filters.mainCategory,
-    filters.category,
-    filters.subcategory,
-    filters.size,
-    filters.search,
-    filters.price,
-    filters.brand,
-    filters.discountOnly,
-  ]);
-
-  /* RESET SCROLL */
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
   }, [filters]);
 
-  /* LOAD MORE */
+  /* --------------------------------- */
+  /* -------- LOAD MORE -------------- */
+  /* --------------------------------- */
+
   const loadMore = () => {
-    const newCount = visibleCount + PAGE_SIZE;
-    setVisibleCount(newCount);
-    setProducts(allProducts.slice(0, newCount));
-    setHasMore(newCount < allProducts.length);
+    const next = visibleCount + PAGE_SIZE;
+    setVisibleCount(next);
+    setProducts(allProducts.slice(0, next));
+    setHasMore(next < allProducts.length);
   };
 
-  /* FILTER HELPERS */
+  /* --------------------------------- */
+  /* -------- HELPERS ---------------- */
+  /* --------------------------------- */
+
   const toggleCategory = (c) => {
-    setFilters((prev) => ({
-      ...prev,
-      category: prev.category.includes(c) ? [] : [c],
+    setFilters((p) => ({
+      ...p,
+      category: p.category.includes(c) ? [] : [c],
       subcategory: "",
     }));
   };
 
   const toggleSize = (s) => {
-    setFilters((prev) => ({
-      ...prev,
-      size: prev.size === s ? "" : s,
+    setFilters((p) => ({
+      ...p,
+      size: p.size === s ? "" : s,
     }));
   };
 
@@ -158,6 +209,10 @@ export default function ProductsPageClient() {
     { type: "video", url: "/assets/CarouselAssets/video1.mp4" },
     { type: "image", url: "/assets/CarouselAssets/banner2.avif" },
   ];
+
+  /* --------------------------------- */
+  /* -------- UI --------------------- */
+  /* --------------------------------- */
 
   return (
     <div className="min-h-screen bg-[#fff9f4]">
@@ -170,6 +225,7 @@ export default function ProductsPageClient() {
       <div className="flex max-w-7xl mx-auto gap-6 px-4 py-6">
         {/* SIDEBAR */}
         <aside className="hidden md:block w-72 space-y-6">
+          {/* SEARCH */}
           <FilterBlock title="Search">
             <input
               value={filters.search}
@@ -181,24 +237,28 @@ export default function ProductsPageClient() {
             />
           </FilterBlock>
 
-          <FilterBlock title="Category">
-            <div className="flex flex-wrap gap-2">
-              {CATEGORY_OPTIONS.map((c) => (
-                <FilterChip
-                  key={c}
-                  active={filters.category.includes(c)}
-                  onClick={() => toggleCategory(c)}
-                >
-                  {c}
-                </FilterChip>
-              ))}
-            </div>
-          </FilterBlock>
+          {/* CATEGORY */}
+          {allCategories.length > 0 && (
+            <FilterBlock title="Category">
+              <div className="flex flex-wrap gap-2">
+                {allCategories.map((c) => (
+                  <FilterChip
+                    key={c}
+                    active={filters.category.includes(c)}
+                    onClick={() => toggleCategory(c)}
+                  >
+                    {c}
+                  </FilterChip>
+                ))}
+              </div>
+            </FilterBlock>
+          )}
 
-          {subcategories.length > 0 && (
+          {/* SUBCATEGORY (ALL AT ONCE) */}
+          {allSubcategories.length > 0 && (
             <FilterBlock title="Sub Category">
               <div className="flex flex-wrap gap-2">
-                {subcategories.map((s) => (
+                {allSubcategories.map((s) => (
                   <FilterChip
                     key={s}
                     active={filters.subcategory === s}
@@ -216,41 +276,42 @@ export default function ProductsPageClient() {
             </FilterBlock>
           )}
 
-          {brands.length > 0 && (
-            <FilterBlock title="Brand">
+          {/* BRAND */}
+          <FilterBlock title="Brand">
+            <FilterChip
+              active={filters.brand === "Branded Collection"}
+              onClick={() =>
+                setFilters((p) => ({
+                  ...p,
+                  brand:
+                    p.brand === "Branded Collection"
+                      ? ""
+                      : "Branded Collection",
+                }))
+              }
+            >
+              Branded Collection
+            </FilterChip>
+          </FilterBlock>
+
+          {/* SIZE (NOT FOR ACCESSORIES) */}
+          {filters.mainCategory !== "accessories" && (
+            <FilterBlock title="Size">
               <div className="flex flex-wrap gap-2">
-                {brands.map((b) => (
+                {SIZE_OPTIONS.map((s) => (
                   <FilterChip
-                    key={b}
-                    active={filters.brand === b}
-                    onClick={() =>
-                      setFilters((p) => ({
-                        ...p,
-                        brand: p.brand === b ? "" : b,
-                      }))
-                    }
+                    key={s}
+                    active={filters.size === s}
+                    onClick={() => toggleSize(s)}
                   >
-                    {b}
+                    {s}
                   </FilterChip>
                 ))}
               </div>
             </FilterBlock>
           )}
 
-          <FilterBlock title="Size">
-            <div className="flex flex-wrap gap-2">
-              {SIZE_OPTIONS.map((s) => (
-                <FilterChip
-                  key={s}
-                  active={filters.size === s}
-                  onClick={() => toggleSize(s)}
-                >
-                  {s}
-                </FilterChip>
-              ))}
-            </div>
-          </FilterBlock>
-
+          {/* OFFERS */}
           <FilterBlock title="Offers">
             <FilterChip
               active={filters.discountOnly}
@@ -265,6 +326,7 @@ export default function ProductsPageClient() {
             </FilterChip>
           </FilterBlock>
 
+          {/* PRICE */}
           <FilterBlock title="Price">
             <input
               type="range"
@@ -285,15 +347,13 @@ export default function ProductsPageClient() {
           </FilterBlock>
         </aside>
 
-        {/* PRODUCT GRID */}
+        {/* GRID */}
         <div className="flex-1">
           <InfiniteScroll
             dataLength={products.length}
             next={loadMore}
             hasMore={hasMore}
-            loader={<p className="text-center py-6 text-gray-500">Loading…</p>}
-            scrollThreshold={0.8}
-            style={{ overflow: "visible" }}
+            loader={<p className="text-center py-6">Loading…</p>}
           >
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
               {products.map((p) => (
@@ -303,7 +363,7 @@ export default function ProductsPageClient() {
           </InfiniteScroll>
 
           {!products.length && (
-            <p className="text-center py-10 text-gray-500 text-lg">
+            <p className="text-center py-10 text-gray-500">
               No matching products 😢
             </p>
           )}
@@ -313,7 +373,9 @@ export default function ProductsPageClient() {
   );
 }
 
-/* ---------------- UI HELPERS ---------------- */
+/* --------------------------------- */
+/* -------- UI HELPERS -------------- */
+/* --------------------------------- */
 
 function FilterBlock({ title, children }) {
   return (

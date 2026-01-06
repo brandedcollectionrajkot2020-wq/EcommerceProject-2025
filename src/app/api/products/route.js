@@ -106,6 +106,8 @@ export async function GET(req) {
   const subcategorySlug = searchParams.get("subcategory");
   const size = searchParams.get("size");
   const featured = searchParams.get("featured");
+  const minPrice = Number(searchParams.get("minPrice"));
+  const maxPrice = Number(searchParams.get("maxPrice"));
 
   let result = [...cache.products];
 
@@ -131,6 +133,17 @@ export async function GET(req) {
   if (featured === "true") {
     result = result.filter((p) => p.featured === true);
   }
+  if (!isNaN(minPrice) || !isNaN(maxPrice)) {
+    result = result.filter((p) => {
+      const price = p.price?.current ?? 0;
+
+      if (!isNaN(minPrice) && price < minPrice) return false;
+      if (!isNaN(maxPrice) && price > maxPrice) return false;
+
+      return true;
+    });
+  }
+
   return NextResponse.json({
     products: result,
     hasMore: false,
