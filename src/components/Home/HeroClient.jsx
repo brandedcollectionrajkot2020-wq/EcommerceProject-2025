@@ -15,7 +15,7 @@ export default function HeroClient({ slides = [] }) {
       <div className="max-w-full mx-4">
         <Swiper
           modules={[Autoplay, Pagination, Navigation]}
-          autoplay={{ delay: 5000 }}
+          autoplay={{ delay: 5000, pauseOnMouseEnter: true }}
           loop
           navigation
           pagination={{ clickable: true }}
