@@ -45,15 +45,23 @@ export async function POST(req) {
       delete data.password;
     }
 
-    const newUser = await User.create({ ...data, provider });
-
+    const newUser = await User.create({
+      email: data.email,
+      provider,
+      googleId: provider === "google" ? data.googleId : undefined,
+      password: provider === "local" ? data.password : undefined,
+      username: data.username,
+      firstName: data.firstName || "",
+      lastName: data.lastName || "",
+    });
     const userResponse = {
       _id: newUser._id,
       email: newUser.email,
       username: newUser.username,
+      firstName: newUser.firstName,
+      lastName: newUser.lastName,
       provider: newUser.provider,
     };
-
     return NextResponse.json(
       { user: userResponse, message: "User created successfully" },
       { status: 201 }
