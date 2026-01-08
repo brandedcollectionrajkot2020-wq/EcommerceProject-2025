@@ -4,12 +4,15 @@ import InputGroupMolecule from "../moleules/InputGroupMolecule";
 import GoogleLoginButton from "@/components/authButtons/GoogleLogin";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useUserStore } from "@/store/useUserStore";
 
 const LoginFormOrganism = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const { getUser } = useUserStore();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,12 +37,16 @@ const LoginFormOrganism = () => {
       if (!res.ok) {
         toast.error(data.message || "Login failed.");
       } else {
-        // toast.success("Logged in successfully 🎉");
+        // 🔥 THIS LINE FIXES EVERYTHING
+        await getUser();
+
         router.push("/");
+        window.location.reload();
       }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong. Try again.");
     }
+
     setLoading(false);
   };
 

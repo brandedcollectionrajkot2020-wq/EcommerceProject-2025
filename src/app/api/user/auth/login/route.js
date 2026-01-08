@@ -21,15 +21,10 @@ export async function POST(req) {
 
     // ---------------- If user doesn't exist ----------------
     if (!user) {
-      if (provider === "google" && googleId) {
-        const newUser = await User.create({
-          email,
-          googleId,
-          provider: "google",
-        });
-        return createSession(newUser);
-      }
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Account not found. Please sign up first." },
+        { status: 404 }
+      );
     }
 
     // Google login but account is password login

@@ -53,9 +53,16 @@ export const useUserStore = create((set, get) => ({
       console.error(err);
     }
   },
-
   logout: async () => {
-    await axios.post("/api/auth/logout", {}, { withCredentials: true });
-    set({ user: null, initialized: false });
+    await fetch("/api/user/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    // clear all client state
+    set({ user: null, initialized: true, loading: false });
+    useCartStore.getState().clearCart?.();
+    useAppStore.getState().clearWishlist?.();
   },
 }));

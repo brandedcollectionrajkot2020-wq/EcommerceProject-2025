@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { redirect, usePathname } from "next/navigation";
+import { redirect, usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useState, useRef } from "react";
 import { CgClose, CgMenu } from "react-icons/cg";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
@@ -31,13 +31,13 @@ const PALETTE = {
    NAV LINKS (Edit URLs only)
 ------------------------- */
 const navLinks = [
-  { name: "Clothes", href: "/products?mainCategory=clothes", mega: true },
+  { name: "Clothing", href: "/products?mainCategory=clothes", mega: true },
   {
     name: "Accessories",
     href: "/products?mainCategory=accessories",
     mega: true,
   },
-  { name: "Shoes", href: "/products?mainCategory=shoes", mega: true },
+  { name: "Footwear", href: "/products?mainCategory=shoes", mega: true },
 
   // { name: "New Arrivals", href: "/products?newArrival=true" },
   // { name: "Best Sellers", href: "/products?bestSeller=true" },
@@ -50,7 +50,7 @@ const navLinks = [
    MEGA MENU DATA (safe to edit titles)
 ------------------------- */
 const sidebarMegaData = {
-  Clothes: [
+  Clothing: [
     {
       title: "Shirts",
       subs: [
@@ -77,7 +77,7 @@ const sidebarMegaData = {
     },
   ],
 
-  Shoes: [
+  Footwear: [
     {
       title: "Shoes",
       subs: [
@@ -131,7 +131,15 @@ const NavBar = () => {
   const fetchCart = useCartStore((s) => s.fetchCart);
   const wishlistCount = useAppStore((s) => s.wishlist.length);
   const cartCount = useCartStore((s) => s.cartCount());
-
+  const router = useRouter();
+  const logout = useUserStore((s) => s.logout);
+  const handleLogout = async () => {
+    await logout();
+    setIsSidebarOpen(false);
+    document.body.style.overflow = "auto";
+    toast.success("Logged out successfully");
+    router.push("/");
+  };
   useEffect(() => {
     getUser();
     fetchCart();
@@ -165,7 +173,13 @@ const NavBar = () => {
 
   useEffect(() => {
     if (initialized && user && !hasShownLoginToast.current) {
-      toast.success(`Welcome back, ${user.username}! 🎉`);
+      toast.success(
+        `Welcome back, ${
+          user.firstName && user.lastName
+            ? user.firstName + " " + user.lastName
+            : user.username
+        }! 🎉`
+      );
       hasShownLoginToast.current = true;
     }
   }, [initialized, user]);
@@ -238,7 +252,8 @@ const NavBar = () => {
               className="p-2 "
               style={{
                 maxHeight: isOpen ? `${megaMaxHeight}px` : 0,
-                overflowY: isOpen ? "auto" : "hidden",
+                overflowY: "hidden",
+
                 WebkitOverflowScrolling: "touch",
                 overscrollBehavior: "contain",
                 transition: "max-height 300ms ease",
@@ -282,7 +297,7 @@ const NavBar = () => {
 
               {/* TOP CATEGORIES */}
               <h3
-                className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} pt-4 mb-2`}
+                className={`text-xs font-semibold uppercase ${PALETTE.TEXT_PRIMARY} pt-2 ml-2 mb-2`}
               >
                 Top Categories
               </h3>
@@ -424,7 +439,7 @@ const NavBar = () => {
                 <li key={link.name} className="relative group">
                   <Link
                     href={`/products?mainCategory=${link.name.toLowerCase()}`}
-                    className={`relative py-1 transition-colors ${PALETTE.HOVER_ACCENT} text-gray-700`}
+                    className={`relative py-1 font-semibold transition-colors ${PALETTE.HOVER_ACCENT} text-gray-700`}
                   >
                     {link.name}
                   </Link>
@@ -470,9 +485,11 @@ const NavBar = () => {
               className="flex items-center text-[#654321] z-40 gap-2"
             >
               <User className="w-6 h-6" />
-              <span>
-                {user.firstName} {user.lastName}
-              </span>
+              {user.firstName && user.lastName ? (
+                <span>{user.firstName + " " + user.lastName}</span>
+              ) : (
+                <span>{user.username}</span>
+              )}
             </Link>
           ) : (
             <Link
@@ -534,18 +551,20 @@ const NavBar = () => {
           ) : user ? (
             <Link
               href="/profile"
-              className="hidden md:flex items-center gap-2 text-[#654321] max-w-[180px]"
+              className="hidden md:flex items-center gap-2 text-white max-w-[180px]"
             >
               <User className="w-6 h-6 shrink-0" />
-              <span className="truncate font-medium">
-                {user.userName} {user.lastName}
-              </span>
+              {user.firstName && user.lastName ? (
+                <span>{user.firstName + " " + user.lastName}</span>
+              ) : (
+                <span>{user.username}</span>
+              )}
             </Link>
           ) : (
             <Link
               href="/auth"
               onClick={handleLinkClick}
-              className="flex flex-col items-center text-[#654321]"
+              className="flex flex-col items-center text-white"
             >
               <User className="w-6 h-6" />
               <span className="text-xs">Signup / Login</span>
@@ -578,6 +597,16 @@ const NavBar = () => {
             Contact Us
           </Link>
         </div>
+        {user && (
+          <div className="mt-6 px-4">
+            <button
+              onClick={handleLogout}
+              className="w-full py-3 text-sm font-semibold text-[#654321] border border-[#DEB887] rounded-lg hover:bg-[#654321] hover:text-white transition-all duration-300"
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </div>
 
       {wishlistOpen && <WishlistModal close={() => setWishlistOpen(false)} />}

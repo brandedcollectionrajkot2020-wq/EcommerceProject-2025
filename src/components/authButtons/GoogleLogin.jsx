@@ -1,4 +1,5 @@
 "use client";
+import { useUserStore } from "@/store/useUserStore";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-hot-toast";
@@ -13,27 +14,31 @@ export default function GoogleLoginButton({ onSuccess, onError, className }) {
       }
 
       const googleUser = jwtDecode(credentialResponse.credential);
-      const userData = {
-        email: googleUser.email,
-        googleId: googleUser.sub,
-        provider: "google",
-      };
 
       const res = await fetch("/api/user/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(userData),
+        body: JSON.stringify({
+          email: googleUser.email,
+          googleId: googleUser.sub,
+          provider: "google",
+        }),
       });
 
       const data = await res.json();
 
-      if (res.ok) {
-        toast.success("Logged in successfully 🎉");
-        onSuccess?.(data);
-      } else {
+      if (!res.ok) {
         toast.error(data.message || "Login failed.");
         onError?.(data.message || "Login failed.");
+        return;
+      }
+
+      if (res.ok) {
+        await useUserStore.getState().getUser();
+        toast.success("Logged in successfully 🎉");
+        onSuccess?.();
+        // window.location.reload();
       }
     } catch (error) {
       toast.error(error.message);
